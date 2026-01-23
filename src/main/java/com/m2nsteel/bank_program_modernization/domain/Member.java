@@ -1,0 +1,40 @@
+package com.m2nsteel.bank_program_modernization.domain;
+
+import com.m2nsteel.bank_program_modernization.domain.status.MemberStatus;
+import com.m2nsteel.bank_program_modernization.domain.type.MemberRole;
+import jakarta.persistence.*;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Getter
+@Table(name = "members")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class Member {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+    private String contact;
+
+    @Column(unique = true, nullable = false)
+    private String memberNumber;
+
+    @Column(unique = true, nullable = false)
+    private String loginId;
+
+    @Column(nullable = false)
+    private String password;
+
+    @Column(nullable = false)
+    private Long branchId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private MemberRole role;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private MemberStatus status;
+}

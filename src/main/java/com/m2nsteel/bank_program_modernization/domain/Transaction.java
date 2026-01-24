@@ -1,7 +1,7 @@
 package com.m2nsteel.bank_program_modernization.domain;
 
-import com.m2nsteel.bank_program_modernization.domain.status.TransactionStatus;
-import com.m2nsteel.bank_program_modernization.domain.type.TransactionType;
+import com.m2nsteel.bank_program_modernization.domain.constant.TransactionStatus;
+import com.m2nsteel.bank_program_modernization.domain.constant.TransactionType;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;

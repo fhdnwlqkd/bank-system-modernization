@@ -1,6 +1,6 @@
 package com.m2nsteel.bank_program_modernization.domain;
 
-import com.m2nsteel.bank_program_modernization.domain.status.CardStatus;
+import com.m2nsteel.bank_program_modernization.domain.constant.CardStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;

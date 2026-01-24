@@ -1,4 +1,4 @@
-package com.m2nsteel.bank_program_modernization.domain.status;
+package com.m2nsteel.bank_program_modernization.domain.constant;
 
 public enum CardStatus {
     ACTIVE,

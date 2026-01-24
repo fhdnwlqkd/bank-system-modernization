@@ -1,7 +1,7 @@
 package com.m2nsteel.bank_program_modernization.domain;
 
-import com.m2nsteel.bank_program_modernization.domain.status.MemberStatus;
-import com.m2nsteel.bank_program_modernization.domain.type.MemberRole;
+import com.m2nsteel.bank_program_modernization.domain.constant.MemberStatus;
+import com.m2nsteel.bank_program_modernization.domain.constant.MemberRole;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;

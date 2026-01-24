@@ -1,0 +1,24 @@
+package com.m2nsteel.bank_program_modernization.core.exception;
+
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+
+@Getter
+@RequiredArgsConstructor
+public enum ErrorCode {
+    // Common Errors
+    INVALID_INPUT("C001", "잘못된 입력값입니다.", HttpStatus.BAD_REQUEST),
+    INTERNAL_SERVER_ERROR("C002", "서버 내부 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
+    // member
+    DUPLICATE_LOGIN_ID("M001", "이미 존재하는 아이디입니다.", HttpStatus.CONFLICT),
+    MEMBER_NOT_FOUND("M002", "존재하지 않는 회원입니다.", HttpStatus.NOT_FOUND),
+    // transaction & account
+    INSUFFICIENT_BALANCE("A001", "잔액이 부족합니다.", HttpStatus.BAD_REQUEST),
+    ACCOUNT_NOT_FOUND("A002", "존재하지 않는 계좌입니다.", HttpStatus.NOT_FOUND),
+    CONCURRENCY_CONFLICT("A003", "동시 요청으로 처리에 실패했습니다. 잠시 후 다시 시도해주세요.", HttpStatus.CONFLICT);
+
+    private final String code;
+    private final String message;
+    private final HttpStatus httpStatus;
+}

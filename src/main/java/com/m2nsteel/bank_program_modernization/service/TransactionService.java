@@ -7,8 +7,10 @@ import com.m2nsteel.bank_program_modernization.domain.TransactionItem;
 import com.m2nsteel.bank_program_modernization.domain.constant.TransactionStatus;
 import com.m2nsteel.bank_program_modernization.domain.constant.TransactionType;
 import com.m2nsteel.bank_program_modernization.dto.request.DepositRequest;
+import com.m2nsteel.bank_program_modernization.dto.request.TransferRequest;
 import com.m2nsteel.bank_program_modernization.dto.request.WithdrawRequest;
 import com.m2nsteel.bank_program_modernization.dto.response.TransactionResponse;
+import com.m2nsteel.bank_program_modernization.dto.response.TransferResponse;
 import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
 import com.m2nsteel.bank_program_modernization.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
@@ -130,6 +132,74 @@ public class TransactionService {
                 savedTransaction.getAmount(),
                 item.getBalanceAfter(),
                 savedTransaction.getOccurredAt()
+        );
+    }
+
+    /*
+    이체 처리(Transfer)
+     */
+    @Transactional
+    public TransferResponse transfer(TransferRequest request) {
+        // 1. Idempotency Key 중복 체크
+        if (transactionRepository.existsByRequestId(request.requestId())) {
+            throw new BusinessException(ErrorCode.DUPLICATE_REQUEST);
+        }
+
+        // 2. 두 계좌 존재 여부 검증 (보내는 사람, 받는 사람)
+        var fromAccount = accountRepository.findByAccountNumber(request.fromAccountNumber())
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
+        var toAccount = accountRepository.findByAccountNumber(request.toAccountNumber())
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
+
+        // 3. 비밀번호 검증
+        if (!passwordEncoder.matches(request.accountPassword(), fromAccount.getAccountPassword())) {
+            throw new BusinessException(ErrorCode.INVALID_ACCOUNT_PASSWORD);
+        }
+
+        // 4. 출금 및 입금
+        fromAccount.withdraw(request.amount());
+        toAccount.deposit(request.amount());
+
+        // 5. Transaction Header 생성
+        Transaction transaction = Transaction.builder()
+                .type(TransactionType.TRANSFER)
+                .status(TransactionStatus.SUCCESS)
+                .amount(request.amount())
+                .requestId(request.requestId())
+                .build();
+
+        // 6. Transaction Items 생성 (2개: 출금 내역, 입금 내역)
+        TransactionItem withdrawItem = TransactionItem.builder()
+                .transaction(transaction)
+                .account(fromAccount)
+                .delta(-request.amount())
+                .balanceAfter(fromAccount.getBalance())
+                .itemOrder(1)
+                .build();
+
+        TransactionItem depositItem = TransactionItem.builder()
+                .transaction(transaction)
+                .account(toAccount)
+                .delta(request.amount())
+                .balanceAfter(toAccount.getBalance())
+                .itemOrder(2)
+                .build();
+
+        transaction.addItem(withdrawItem);
+        transaction.addItem(depositItem);
+
+        // 7. 저장
+        transactionRepository.save(transaction);
+
+        // 8. 응답 DTO 변환
+        return new TransferResponse(
+                transaction.getId(),
+                fromAccount.getAccountNumber(),
+                toAccount.getAccountNumber(),
+                transaction.getAmount(),
+                withdrawItem.getBalanceAfter(),
+                transaction.getStatus().name(),
+                transaction.getOccurredAt()
         );
     }
 }

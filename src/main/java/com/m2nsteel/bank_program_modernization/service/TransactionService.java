@@ -166,6 +166,7 @@ public class TransactionService {
                 .status(TransactionStatus.SUCCESS)
                 .amount(request.amount())
                 .requestId(request.requestId())
+                .occurredAt(LocalDateTime.now())
                 .build();
 
         // 6. Transaction Items 생성 (2개: 출금 내역, 입금 내역)
@@ -174,6 +175,7 @@ public class TransactionService {
                 .account(fromAccount)
                 .delta(-request.amount())
                 .balanceAfter(fromAccount.getBalance())
+                .occurredAt(transaction.getOccurredAt())
                 .itemOrder(1)
                 .build();
 
@@ -182,6 +184,7 @@ public class TransactionService {
                 .account(toAccount)
                 .delta(request.amount())
                 .balanceAfter(toAccount.getBalance())
+                .occurredAt(transaction.getOccurredAt())
                 .itemOrder(2)
                 .build();
 

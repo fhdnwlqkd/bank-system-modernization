@@ -1,15 +1,19 @@
 package com.m2nsteel.bank_program_modernization.domain;
 
 import com.m2nsteel.bank_program_modernization.domain.constant.CardStatus;
+import com.m2nsteel.bank_program_modernization.domain.constant.CardType;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Entity
 @Getter
+@Builder
 @Table(name = "cards", indexes = {})
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Card {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -25,7 +29,12 @@ public class Card {
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
+    private CardType cardType;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private CardStatus status;
 
-    private String expiryDate; // MM/YY
+    private LocalDateTime issuedAt;
+    private LocalDateTime expiredAt;
 }

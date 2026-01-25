@@ -19,7 +19,10 @@ public enum ErrorCode {
     INVALID_ACCOUNT_PASSWORD("A003", "계좌 비밀번호가 올바르지 않습니다.", HttpStatus.UNAUTHORIZED),
     CONCURRENCY_CONFLICT("A004", "동시 요청으로 처리에 실패했습니다. 잠시 후 다시 시도해주세요.", HttpStatus.CONFLICT),
 
-    DUPLICATE_REQUEST("T001", "이미 처리된 요청입니다.", HttpStatus.CONFLICT);
+    DUPLICATE_REQUEST("T001", "이미 처리된 요청입니다.", HttpStatus.CONFLICT),
+
+    // branch
+    DUPLICATE_BRANCH_NAME("B001", "이미 존재하는 지점 이름입니다.", HttpStatus.CONFLICT);
 
     private final String code;
     private final String message;

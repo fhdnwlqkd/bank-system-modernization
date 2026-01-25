@@ -6,11 +6,14 @@ import com.m2nsteel.bank_program_modernization.dto.request.DepositRequest;
 import com.m2nsteel.bank_program_modernization.dto.request.MemberSignUpRequest;
 import com.m2nsteel.bank_program_modernization.dto.request.WithdrawRequest;
 import com.m2nsteel.bank_program_modernization.dto.response.AccountResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
@@ -19,35 +22,31 @@ class WithdrawalServiceTest {
     @Autowired TransactionService transactionService;
     @Autowired AccountService accountService;
     @Autowired MemberService memberService;
+    private String accountNum;
+    private final String accountPassword = "password1234";
+
+    @BeforeEach
+    void setUp() {
+        // 1.가입 및 계좌 생성
+        var member = memberService.signUp(new MemberSignUpRequest("member1", "p1", "M1", "Member", 1L));
+        var account = accountService.createAccount(new AccountCreateRequest(member.memberId(), 1L, accountPassword));
+        accountNum = account.accountNumber();
+
+        // 2. 초기 잔액 10,000원 입금
+        transactionService.deposit(new DepositRequest(UUID.randomUUID().toString(), accountNum, 10000L));
+    }
 
     @Test
-    @DisplayName("출금 성공 테스트")
+    @DisplayName("출금 성공 테스트: 잔액 확인")
     void withdraw() {
         // 1. Given: 테스트를 위한 준비 (회원 가입, 계좌 생성)
-        MemberSignUpRequest signUpRequest = new MemberSignUpRequest(
-                "testuser", "password123", "M123456", "John Doe", 1L
-        );
-        var memberResponse = memberService.signUp(signUpRequest);
-        Long branchId = 1L;
-        String accountPassword = "1234";
-        AccountCreateRequest accountRequest = new AccountCreateRequest(memberResponse.memberId(), branchId, accountPassword);
-        AccountResponse accountResponse = accountService.createAccount(accountRequest);
-        String DepositRequestId = "deposit-request-id-123";
-        long depositAmount = 5000L;
-        DepositRequest depositRequest = new DepositRequest(
-                DepositRequestId,
-                accountResponse.accountNumber(),
-                depositAmount
-        );
-        var response1 = transactionService.deposit(depositRequest);
-
         String requestId = "unique-request-id-123";
-        long withdrawalAmount = 5000L;
+        long withdrawalAmount = 10000L;
 
         // 2. When: 입금 요청 수행
         WithdrawRequest withdrawRequest = new WithdrawRequest(
                 requestId,
-                accountResponse.accountNumber(),
+                accountNum,
                 withdrawalAmount,
                 accountPassword
         );
@@ -59,33 +58,16 @@ class WithdrawalServiceTest {
     }
 
     @Test
-    @DisplayName("중복 요청 테스트")
+    @DisplayName("출금 실패: 중복 요청 테스트")
     void duplicateDeposit() {
-        // 1. Given: 테스트를 위한 준비 (회원 가입, 계좌 생성, 첫 입금)
-        MemberSignUpRequest signUpRequest = new MemberSignUpRequest(
-                "testuser", "password123", "M123456", "John Doe", 1L
-        );
-        var memberResponse = memberService.signUp(signUpRequest);
-        Long branchId = 1L;
-        AccountCreateRequest accountRequest = new AccountCreateRequest(memberResponse.memberId(), branchId, "1234");
-        AccountResponse accountResponse = accountService.createAccount(accountRequest);
-
-        String DepositRequestId = "deposit-request-id-123";
-        long depositAmount = 5000L;
-        DepositRequest depositRequest = new DepositRequest(
-                DepositRequestId,
-                accountResponse.accountNumber(),
-                depositAmount
-        );
-        var response1 = transactionService.deposit(depositRequest);
-
+        // 1. Given: 테스트를 위한 준비
         String requestId = "unique-request-id-123";
         long withdrawalAmount = 5000L;
         WithdrawRequest withdrawRequest = new WithdrawRequest(
                 requestId,
-                accountResponse.accountNumber(),
+                accountNum,
                 withdrawalAmount,
-                "1234"
+                accountPassword
         );
         var transactionResponse = transactionService.withdraw(withdrawRequest);
         // 2. When & Then: 동일한 요청 ID로 중복 입금 요청 시도
@@ -95,28 +77,39 @@ class WithdrawalServiceTest {
     }
 
     @Test
-    @DisplayName("잘못된 출금액 테스트")
+    @DisplayName("출금 실패: 잘못된 출금액 테스트")
     void invalidDepositAmount() {
-        // 1. Given: 테스트를 위한 준비 (회원 가입, 계좌 생성, 첫 입금)
-        MemberSignUpRequest signUpRequest = new MemberSignUpRequest(
-                "testuser", "password123", "M123456", "John Doe", 1L
-        );
-        var memberResponse = memberService.signUp(signUpRequest);
-        Long branchId = 1L;
-        AccountCreateRequest accountRequest = new AccountCreateRequest(memberResponse.memberId(), branchId, "1234");
-        AccountResponse accountResponse = accountService.createAccount(accountRequest);
-
+        // 1. Given: 테스트를 위한 준비
         String requestId = "unique-request-id-123";
-        long withdrawalAmount = 5000L;
+        long withdrawalAmount = 20000L;
         WithdrawRequest withdrawRequest = new WithdrawRequest(
                 requestId,
-                accountResponse.accountNumber(),
+                accountNum,
                 withdrawalAmount,
-                "1234"
+                accountPassword
         );
         // 2. When & Then: 잘못된 출금액 요청 시도
         assertThrows(BusinessException.class, () -> {
             transactionService.withdraw(withdrawRequest);
         });
     }
+
+    @Test
+    @DisplayName("출금 실패: 잘못된 비밀번호 테스트")
+    void invalidAccountPassword() {
+        // 1. Given: 테스트를 위한 준비
+        String requestId = "unique-request-id-123";
+        long withdrawalAmount = 5000L;
+        WithdrawRequest withdrawRequest = new WithdrawRequest(
+                requestId,
+                accountNum,
+                withdrawalAmount,
+                "wrong-password"
+        );
+        // 2. When & Then: 잘못된 비밀번호 요청 시도
+        assertThrows(BusinessException.class, () -> {
+            transactionService.withdraw(withdrawRequest);
+        });
+    }
+
 }

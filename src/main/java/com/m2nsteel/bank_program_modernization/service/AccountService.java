@@ -28,7 +28,7 @@ public class AccountService {
     @Transactional
     public AccountResponse createAccount(AccountCreateRequest request) {
 
-        // 1. 회원 존재 여부 검증
+        // 1. 회원 존재 여부 검증 TODO: branchId 도 검증 필요
         if(!memberRepository.existsById(request.memberId())) {
             throw new BusinessException(ErrorCode.MEMBER_NOT_FOUND);
         }

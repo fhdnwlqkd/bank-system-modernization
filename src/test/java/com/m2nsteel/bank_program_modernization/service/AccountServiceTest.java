@@ -34,11 +34,11 @@ class AccountServiceTest {
 
         // 2. When: 계좌 생성 수행
         Long branchId = 1L;
-        AccountCreateRequest accountRequest = new AccountCreateRequest(memberResponse.id(), branchId);
+        AccountCreateRequest accountRequest = new AccountCreateRequest(memberResponse.memberId(), branchId);
         AccountResponse accountResponse = accountService.createAccount(accountRequest);
 
         // 3. Then: 결과 검증
-        assertThat(accountResponse.memberId()).isEqualTo(memberResponse.id());
+        assertThat(accountResponse.memberId()).isEqualTo(memberResponse.memberId());
         assertThat(accountResponse.balance()).isEqualTo(0L);
         assertThat(accountResponse.accountNumber()).isNotBlank();
     }

@@ -26,7 +26,7 @@ public class MemberService {
     @Transactional
     public MemberResponse signUp(MemberSignUpRequest request) {
 
-        // 1. 아이디 중복 체크
+        // 1. 아이디 중복 체크 TODO: branchId 도 검증 필요
         if (memberRepository.existsByLoginId(request.loginId())) {
             throw new BusinessException(ErrorCode.DUPLICATE_LOGIN_ID);
         }

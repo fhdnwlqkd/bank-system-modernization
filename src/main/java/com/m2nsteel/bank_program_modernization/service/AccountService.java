@@ -10,6 +10,7 @@ import com.m2nsteel.bank_program_modernization.dto.response.AccountResponse;
 import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
 import com.m2nsteel.bank_program_modernization.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +22,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class AccountService {
     private final MemberRepository memberRepository;
     private final AccountRepository accountRepository;
+    private final PasswordEncoder passwordEncoder;
 
     /*
     신규 계좌 개설
@@ -33,13 +35,15 @@ public class AccountService {
             throw new BusinessException(ErrorCode.MEMBER_NOT_FOUND);
         }
 
-        // 2. 계좌번호 생성
+        // 2. 계좌번호 생성 & 계좌 비밀번호 암호화
         String accountNumber = generateUniqueAccountNumber();
+        String encodedPassword = passwordEncoder.encode(request.accountPassword());
 
         // 3. 계좌 엔티티 생성 및 저장
         var account = Account.builder()
                 .memberId(request.memberId())
                 .accountNumber(accountNumber)
+                .accountPassword(encodedPassword)
                 .branchId(request.branchId())
                 .balance(0L)
                 .status(AccountStatus.ACTIVE)

@@ -4,5 +4,6 @@ import jakarta.validation.constraints.NotNull;
 
 public record AccountCreateRequest (
         @NotNull Long memberId,
-        @NotNull Long branchId
+        @NotNull Long branchId,
+        @NotNull String accountPassword
 ) {}

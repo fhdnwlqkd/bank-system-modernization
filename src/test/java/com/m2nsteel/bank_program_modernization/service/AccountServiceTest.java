@@ -34,7 +34,7 @@ class AccountServiceTest {
 
         // 2. When: 계좌 생성 수행
         Long branchId = 1L;
-        AccountCreateRequest accountRequest = new AccountCreateRequest(memberResponse.memberId(), branchId);
+        AccountCreateRequest accountRequest = new AccountCreateRequest(memberResponse.memberId(), branchId, "1234");
         AccountResponse accountResponse = accountService.createAccount(accountRequest);
 
         // 3. Then: 결과 검증
@@ -47,7 +47,7 @@ class AccountServiceTest {
     @DisplayName("존재하지 않는 회원으로 계좌 생성 시 예외 발생")
     void createAccount_fail_memberNotFound() {
         // given: 저장되지 않은 임의의 ID 999L
-        AccountCreateRequest request = new AccountCreateRequest(999L, 0L);
+        AccountCreateRequest request = new AccountCreateRequest(999L, 0L, "1234");
 
         // when & then
         assertThatThrownBy(() -> accountService.createAccount(request))

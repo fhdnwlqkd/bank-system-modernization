@@ -28,7 +28,7 @@ class AccountServiceTest {
     void createAccount_success() {
         // 1. Given: 테스트를 위한 준비 (회원 가입)
         MemberSignUpRequest signUpRequest = new MemberSignUpRequest(
-                "testuser", "password123", "M123456", "John Doe", 1L
+                "testuser", "password123", "John Doe", 1L
         );
         var memberResponse = memberService.signUp(signUpRequest);
 

@@ -33,12 +33,12 @@ public class TransferServiceTest {
     @BeforeEach
     void setUp() {
         // 1. 보내는 사람 가입 및 계좌 생성
-        var sender = memberService.signUp(new MemberSignUpRequest("sender", "p1", "S1", "Sender", 1L));
+        var sender = memberService.signUp(new MemberSignUpRequest("sender", "p1", "Sender", 1L));
         var senderAccount = accountService.createAccount(new AccountCreateRequest(sender.memberId(), 1L, accountPassword));
         senderAccountNum = senderAccount.accountNumber();
 
         // 2. 받는 사람 가입 및 계좌 생성
-        var receiver = memberService.signUp(new MemberSignUpRequest("receiver", "p2", "R1", "Receiver", 1L));
+        var receiver = memberService.signUp(new MemberSignUpRequest("receiver", "p2", "Receiver", 1L));
         var receiverAccount = accountService.createAccount(new AccountCreateRequest(receiver.memberId(), 1L, "any-pw"));
         receiverAccountNum = receiverAccount.accountNumber();
 

@@ -28,7 +28,7 @@ class WithdrawalServiceTest {
     @BeforeEach
     void setUp() {
         // 1.가입 및 계좌 생성
-        var member = memberService.signUp(new MemberSignUpRequest("member1", "p1", "M1", "Member", 1L));
+        var member = memberService.signUp(new MemberSignUpRequest("member1", "p1", "Member", 1L));
         var account = accountService.createAccount(new AccountCreateRequest(member.memberId(), 1L, accountPassword));
         accountNum = account.accountNumber();
 

@@ -25,7 +25,6 @@ class MemberServiceTest {
         MemberSignUpRequest request = new MemberSignUpRequest(
                 "testuser",
                 "password123",
-                "M123456",
                 "John Doe",
                 1L
         );
@@ -40,7 +39,6 @@ class MemberServiceTest {
         MemberSignUpRequest request1 = new MemberSignUpRequest(
                 "testuser",
                 "password123",
-                "M123456",
                 "John Doe",
                 1L
         );
@@ -49,7 +47,6 @@ class MemberServiceTest {
         MemberSignUpRequest request2 = new MemberSignUpRequest(
                 "testuser",
                 "pw123",
-                "M002",
                 "중복이",
                 1L);
 

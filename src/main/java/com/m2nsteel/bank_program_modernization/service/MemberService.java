@@ -13,6 +13,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
+
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -34,11 +36,15 @@ public class MemberService {
         // 2. 비밀번호 암호화
         String encodedPassword = passwordEncoder.encode(request.password());
 
-        // 3. 회원 엔티티 생성 및 저장
+        // 3. 회원 번호 생성
+        Long seq = memberRepository.getNextMemberSequence();
+        String memberNumber = "M-" + LocalDate.now().getYear() + "-" + seq;
+
+        // 4. 회원 엔티티 생성 및 저장
         Member member = Member.builder()
                 .loginId(request.loginId())
                 .password(encodedPassword)
-                .memberNumber(request.MemberNumber())
+                .memberNumber(memberNumber)
                 .name(request.name())
                 .branchId(request.branchId())
                 .role(MemberRole.USER)
@@ -47,7 +53,7 @@ public class MemberService {
 
         Member savedMember = memberRepository.save(member);
 
-        // 4. 응답 DTO 변환
+        // 5. 응답 DTO 변환
         return new MemberResponse(
                 savedMember.getId(),
                 savedMember.getLoginId(),

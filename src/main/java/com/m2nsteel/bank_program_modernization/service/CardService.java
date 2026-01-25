@@ -49,12 +49,13 @@ public class CardService {
                 .build();
 
         Card savedCard = cardRepository.save(card);
+        String cleanNumber = cardNumber.replaceAll("\\D", "");
+        String masked = cleanNumber.replaceAll("(\\d{4})(\\d{4})(\\d{4})(\\d{4})", "$1-****-****-$4");
 
         // 3. 응답 DTO 변환
-        String maskedCardNumber = cardNumber.replaceAll("(\\d{4})(\\d{4})(\\d{4})(\\d{4})", "$1-****-****-$4");
         return new CardResponse(
                 savedCard.getId(),
-                maskedCardNumber,
+                masked,
                 account.getAccountNumber(),
                 savedCard.getCardType().name(),
                 savedCard.getStatus().name(),

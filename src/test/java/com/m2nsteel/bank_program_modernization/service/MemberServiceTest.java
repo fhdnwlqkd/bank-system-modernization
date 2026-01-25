@@ -1,10 +1,14 @@
 package com.m2nsteel.bank_program_modernization.service;
 
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
+import com.m2nsteel.bank_program_modernization.domain.Branch;
 import com.m2nsteel.bank_program_modernization.domain.Member;
+import com.m2nsteel.bank_program_modernization.dto.request.BranchCreateRequest;
 import com.m2nsteel.bank_program_modernization.dto.request.MemberSignUpRequest;
+import com.m2nsteel.bank_program_modernization.dto.response.BranchResponse;
 import com.m2nsteel.bank_program_modernization.repository.MemberRepository;
 import org.assertj.core.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +22,21 @@ import static org.assertj.core.api.Assertions.*;
 class MemberServiceTest {
     @Autowired MemberService memberService;
     @Autowired MemberRepository memberRepository;
+    @Autowired BranchService branchService;
+    private String branchCode;
+
+    @BeforeEach
+    void setUp() {
+        // 1. 지점 생성
+        BranchResponse branch = branchService.createBranch(
+                new BranchCreateRequest(
+                        "Test Branch",
+                        "123 Test St",
+                        "555-0000"
+                )
+        );
+        this.branchCode = branch.branchCode();
+    }
 
     @Test
     @DisplayName("회원가입 성공 테스트")
@@ -26,7 +45,7 @@ class MemberServiceTest {
                 "testuser",
                 "password123",
                 "John Doe",
-                1L
+                branchCode
         );
         var response = memberService.signUp(request);
         assertThat(response.loginId()).isEqualTo("testuser");
@@ -40,7 +59,7 @@ class MemberServiceTest {
                 "testuser",
                 "password123",
                 "John Doe",
-                1L
+                branchCode
         );
         var response = memberService.signUp(request1);
 
@@ -48,8 +67,7 @@ class MemberServiceTest {
                 "testuser",
                 "pw123",
                 "중복이",
-                1L);
-
+                branchCode);
         assertThatThrownBy(() -> memberService.signUp(request2))
                 .isInstanceOf(BusinessException.class);
     }

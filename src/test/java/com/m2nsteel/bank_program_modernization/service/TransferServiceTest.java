@@ -1,10 +1,7 @@
 package com.m2nsteel.bank_program_modernization.service;
 
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
-import com.m2nsteel.bank_program_modernization.dto.request.AccountCreateRequest;
-import com.m2nsteel.bank_program_modernization.dto.request.DepositRequest;
-import com.m2nsteel.bank_program_modernization.dto.request.MemberSignUpRequest;
-import com.m2nsteel.bank_program_modernization.dto.request.TransferRequest;
+import com.m2nsteel.bank_program_modernization.dto.request.*;
 import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -25,6 +22,7 @@ public class TransferServiceTest {
     @Autowired AccountService accountService;
     @Autowired MemberService memberService;
     @Autowired AccountRepository accountRepository;
+    @Autowired BranchService branchService;
 
     private String senderAccountNum;
     private String receiverAccountNum;
@@ -32,17 +30,26 @@ public class TransferServiceTest {
 
     @BeforeEach
     void setUp() {
-        // 1. 보내는 사람 가입 및 계좌 생성
-        var sender = memberService.signUp(new MemberSignUpRequest("sender", "p1", "Sender", 1L));
-        var senderAccount = accountService.createAccount(new AccountCreateRequest(sender.memberId(), 1L, accountPassword));
+        // 1. 지점 생성
+        var branch = branchService.createBranch(
+                new BranchCreateRequest(
+                        "Test Branch",
+                        "123 Test St",
+                        "555-0000"
+                )
+        );
+
+        // 2. 보내는 사람 가입 및 계좌 생성
+        var sender = memberService.signUp(new MemberSignUpRequest("sender", "p1", "Sender", branch.branchCode()));
+        var senderAccount = accountService.createAccount(new AccountCreateRequest(sender.memberNumber(), branch.branchCode(), accountPassword));
         senderAccountNum = senderAccount.accountNumber();
 
-        // 2. 받는 사람 가입 및 계좌 생성
-        var receiver = memberService.signUp(new MemberSignUpRequest("receiver", "p2", "Receiver", 1L));
-        var receiverAccount = accountService.createAccount(new AccountCreateRequest(receiver.memberId(), 1L, "any-pw"));
+        // 3. 받는 사람 가입 및 계좌 생성
+        var receiver = memberService.signUp(new MemberSignUpRequest("receiver", "p2", "Receiver", branch.branchCode()));
+        var receiverAccount = accountService.createAccount(new AccountCreateRequest(receiver.memberNumber(), branch.branchCode(), "any-pw"));
         receiverAccountNum = receiverAccount.accountNumber();
 
-        // 3. 보내는 사람에게 초기 잔액 10,000원 입금
+        // 4. 보내는 사람에게 초기 잔액 10,000원 입금
         transactionService.deposit(new DepositRequest(UUID.randomUUID().toString(), senderAccountNum, 10000L));
     }
 

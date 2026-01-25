@@ -2,6 +2,7 @@ package com.m2nsteel.bank_program_modernization.service;
 
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.dto.request.AccountCreateRequest;
+import com.m2nsteel.bank_program_modernization.dto.request.BranchCreateRequest;
 import com.m2nsteel.bank_program_modernization.dto.request.DepositRequest;
 import com.m2nsteel.bank_program_modernization.dto.request.MemberSignUpRequest;
 import com.m2nsteel.bank_program_modernization.dto.response.AccountResponse;
@@ -21,15 +22,20 @@ class DepositServiceTest {
     @Autowired TransactionService transactionService;
     @Autowired AccountService accountService;
     @Autowired MemberService memberService;
+    @Autowired BranchService branchService;
 
     private String accountNum;
-    private final String accountPassword = "password1234";
+    private String accountPassword = "password1234";
 
     @BeforeEach
     void setUp() {
-        // 1.가입 및 계좌 생성
-        var member = memberService.signUp(new MemberSignUpRequest("member1", "p1", "Member", 1L));
-        var account = accountService.createAccount(new AccountCreateRequest(member.memberId(), 1L, accountPassword));
+        // 1. 지점 생성
+        var branch = branchService.createBranch(
+                new BranchCreateRequest("Branch1", "Address1", "Contact1")
+        );
+        // 2.가입 및 계좌 생성
+        var member = memberService.signUp(new MemberSignUpRequest("member1", "p1", "Member", branch.branchCode()));
+        var account = accountService.createAccount(new AccountCreateRequest(member.memberNumber(), branch.branchCode(), accountPassword));
         accountNum = account.accountNumber();
     }
 

@@ -3,6 +3,7 @@ package com.m2nsteel.bank_program_modernization.service;
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.domain.Member;
 import com.m2nsteel.bank_program_modernization.dto.request.AccountCreateRequest;
+import com.m2nsteel.bank_program_modernization.dto.request.BranchCreateRequest;
 import com.m2nsteel.bank_program_modernization.dto.request.MemberSignUpRequest;
 import com.m2nsteel.bank_program_modernization.dto.response.AccountResponse;
 import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
@@ -23,18 +24,21 @@ class AccountServiceTest {
 
     @Autowired AccountService accountService;
     @Autowired MemberService memberService;
+    @Autowired BranchService branchService;
     @Test
     @DisplayName("계좌 생성 성공")
     void createAccount_success() {
-        // 1. Given: 테스트를 위한 준비 (회원 가입)
+        // 1. Given: 테스트를 위한 준비
+        BranchCreateRequest branchRequest = new BranchCreateRequest(
+                "Main Branch", "123 Main St", "555-1234"
+        );
+        var branchResponse = branchService.createBranch(branchRequest);
         MemberSignUpRequest signUpRequest = new MemberSignUpRequest(
-                "testuser", "password123", "John Doe", 1L
+                "testuser", "password123", "John Doe", branchResponse.branchCode()
         );
         var memberResponse = memberService.signUp(signUpRequest);
-
         // 2. When: 계좌 생성 수행
-        Long branchId = 1L;
-        AccountCreateRequest accountRequest = new AccountCreateRequest(memberResponse.memberId(), branchId, "1234");
+        AccountCreateRequest accountRequest = new AccountCreateRequest(memberResponse.memberNumber(), branchResponse.branchCode(), "1234");
         AccountResponse accountResponse = accountService.createAccount(accountRequest);
 
         // 3. Then: 결과 검증
@@ -46,8 +50,8 @@ class AccountServiceTest {
     @Test
     @DisplayName("존재하지 않는 회원으로 계좌 생성 시 예외 발생")
     void createAccount_fail_memberNotFound() {
-        // given: 저장되지 않은 임의의 ID 999L
-        AccountCreateRequest request = new AccountCreateRequest(999L, 0L, "1234");
+        // given: 저장되지 않은 임의의 memberNumber 사용
+        AccountCreateRequest request = new AccountCreateRequest("member", "B-111", "1234");
 
         // when & then
         assertThatThrownBy(() -> accountService.createAccount(request))

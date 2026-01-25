@@ -1,10 +1,7 @@
 package com.m2nsteel.bank_program_modernization.service;
 
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
-import com.m2nsteel.bank_program_modernization.dto.request.AccountCreateRequest;
-import com.m2nsteel.bank_program_modernization.dto.request.DepositRequest;
-import com.m2nsteel.bank_program_modernization.dto.request.MemberSignUpRequest;
-import com.m2nsteel.bank_program_modernization.dto.request.WithdrawRequest;
+import com.m2nsteel.bank_program_modernization.dto.request.*;
 import com.m2nsteel.bank_program_modernization.dto.response.AccountResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -22,17 +19,26 @@ class WithdrawalServiceTest {
     @Autowired TransactionService transactionService;
     @Autowired AccountService accountService;
     @Autowired MemberService memberService;
+    @Autowired BranchService branchService;
     private String accountNum;
     private final String accountPassword = "password1234";
 
     @BeforeEach
     void setUp() {
-        // 1.가입 및 계좌 생성
-        var member = memberService.signUp(new MemberSignUpRequest("member1", "p1", "Member", 1L));
-        var account = accountService.createAccount(new AccountCreateRequest(member.memberId(), 1L, accountPassword));
+        // 1. 지점 생성
+        var branch = branchService.createBranch(
+                new BranchCreateRequest(
+                        "Test Branch",
+                        "123 Test St",
+                        "555-0000"
+                )
+        );
+        // 2.가입 및 계좌 생성
+        var member = memberService.signUp(new MemberSignUpRequest("member1", "p1", "Member", branch.branchCode()));
+        var account = accountService.createAccount(new AccountCreateRequest(member.memberNumber(), branch.branchCode(), accountPassword));
         accountNum = account.accountNumber();
 
-        // 2. 초기 잔액 10,000원 입금
+        // 3. 초기 잔액 10,000원 입금
         transactionService.deposit(new DepositRequest(UUID.randomUUID().toString(), accountNum, 10000L));
     }
 

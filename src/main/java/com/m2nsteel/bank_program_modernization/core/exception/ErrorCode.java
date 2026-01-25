@@ -22,7 +22,8 @@ public enum ErrorCode {
     DUPLICATE_REQUEST("T001", "이미 처리된 요청입니다.", HttpStatus.CONFLICT),
 
     // branch
-    DUPLICATE_BRANCH_NAME("B001", "이미 존재하는 지점 이름입니다.", HttpStatus.CONFLICT);
+    DUPLICATE_BRANCH_NAME("B001", "이미 존재하는 지점 이름입니다.", HttpStatus.CONFLICT),
+    BRANCH_NOT_FOUND("B002", "존재하지 않는 지점입니다.", HttpStatus.NOT_FOUND);
 
     private final String code;
     private final String message;

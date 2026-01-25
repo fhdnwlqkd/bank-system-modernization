@@ -2,11 +2,13 @@ package com.m2nsteel.bank_program_modernization.service;
 
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
+import com.m2nsteel.bank_program_modernization.domain.Branch;
 import com.m2nsteel.bank_program_modernization.domain.Member;
 import com.m2nsteel.bank_program_modernization.domain.constant.MemberRole;
 import com.m2nsteel.bank_program_modernization.domain.constant.MemberStatus;
 import com.m2nsteel.bank_program_modernization.dto.request.MemberSignUpRequest;
 import com.m2nsteel.bank_program_modernization.dto.response.MemberResponse;
+import com.m2nsteel.bank_program_modernization.repository.BranchRepository;
 import com.m2nsteel.bank_program_modernization.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -20,6 +22,7 @@ import java.time.LocalDate;
 @Transactional(readOnly = true)
 public class MemberService {
     private final MemberRepository memberRepository;
+    private final BranchRepository branchRepository;
     private final PasswordEncoder passwordEncoder;
 
     /*
@@ -28,10 +31,12 @@ public class MemberService {
     @Transactional
     public MemberResponse signUp(MemberSignUpRequest request) {
 
-        // 1. 아이디 중복 체크 TODO: branchId 도 검증 필요
+        // 1. 아이디 중복 체크 및 지점 조회
         if (memberRepository.existsByLoginId(request.loginId())) {
             throw new BusinessException(ErrorCode.DUPLICATE_LOGIN_ID);
         }
+        Branch branch = branchRepository.findByBranchCode(request.branchCode())
+                .orElseThrow(() -> new BusinessException(ErrorCode.BRANCH_NOT_FOUND));
 
         // 2. 비밀번호 암호화
         String encodedPassword = passwordEncoder.encode(request.password());
@@ -46,7 +51,7 @@ public class MemberService {
                 .password(encodedPassword)
                 .memberNumber(memberNumber)
                 .name(request.name())
-                .branchId(request.branchId())
+                .branchId(branch.getId())
                 .role(MemberRole.USER)
                 .status(MemberStatus.ACTIVE)
                 .build();

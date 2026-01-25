@@ -38,7 +38,7 @@ class AccountServiceTest {
         AccountResponse accountResponse = accountService.createAccount(accountRequest);
 
         // 3. Then: 결과 검증
-        assertThat(accountResponse.id()).isEqualTo(memberResponse.id());
+        assertThat(accountResponse.memberId()).isEqualTo(memberResponse.id());
         assertThat(accountResponse.balance()).isEqualTo(0L);
         assertThat(accountResponse.accountNumber()).isNotBlank();
     }

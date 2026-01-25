@@ -3,6 +3,7 @@ package com.m2nsteel.bank_program_modernization.domain;
 import com.m2nsteel.bank_program_modernization.domain.constant.AccountStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
@@ -14,7 +15,7 @@ import java.time.LocalDateTime;
 @Getter
 @Table(name = "accounts", indexes = {})
 @EntityListeners(AuditingEntityListener.class)
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Builder
 public class Account {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)

@@ -4,6 +4,7 @@ import com.m2nsteel.bank_program_modernization.domain.constant.TransactionStatus
 import com.m2nsteel.bank_program_modernization.domain.constant.TransactionType;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
@@ -14,9 +15,9 @@ import java.util.List;
 
 @Entity
 @Getter
+@Builder
 @Table(name="transactions", indexes = {})
 @EntityListeners(AuditingEntityListener.class)
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Transaction {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -38,10 +39,15 @@ public class Transaction {
     @Column(nullable = false, updatable = false)
     private LocalDateTime occurredAt;
 
+    @Builder.Default
     @OneToMany(mappedBy = "transaction", cascade = CascadeType.ALL)
     private List<TransactionItem> items = new ArrayList<>();
 
     // 요청 식별자 -> 중복 요청 방지용
-    @Column(nullable = false, updatable = false)
+    @Column(nullable = false, updatable = false, unique = true)
     private String requestId;
+
+    public void addItem(TransactionItem item) {
+        items.add(item);
+    }
 }

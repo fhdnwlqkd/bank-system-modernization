@@ -2,6 +2,7 @@ package com.m2nsteel.bank_program_modernization.domain;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
@@ -9,8 +10,8 @@ import java.time.LocalDateTime;
 
 @Entity
 @Getter
+@Builder
 @Table(name = "transaction_items", indexes = {})
-@NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class TransactionItem {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -20,8 +21,9 @@ public class TransactionItem {
     @JoinColumn(name = "transaction_id", nullable = false)
     private Transaction transaction;
 
-    @Column(nullable = false)
-    private Long accountId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "account_id", nullable = false)
+    private Account account;
 
     @Column(nullable = false)
     private Long delta;

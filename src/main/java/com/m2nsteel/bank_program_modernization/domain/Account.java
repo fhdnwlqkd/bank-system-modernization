@@ -1,5 +1,7 @@
 package com.m2nsteel.bank_program_modernization.domain;
 
+import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
+import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
 import com.m2nsteel.bank_program_modernization.domain.constant.AccountStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
@@ -41,4 +43,11 @@ public class Account {
 
     @CreatedDate
     LocalDateTime createdAt;
+
+    public void deposit(Long amount) {
+        if(amount <= 0) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+        this.balance += amount;
+    }
 }

@@ -14,7 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @Transactional
-class TransactionServiceTest {
+class DepositServiceTest {
     @Autowired TransactionService transactionService;
     @Autowired AccountService accountService;
     @Autowired MemberService memberService;

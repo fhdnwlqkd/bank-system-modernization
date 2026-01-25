@@ -16,7 +16,9 @@ public enum ErrorCode {
     // transaction & account
     INSUFFICIENT_BALANCE("A001", "잔액이 부족합니다.", HttpStatus.BAD_REQUEST),
     ACCOUNT_NOT_FOUND("A002", "존재하지 않는 계좌입니다.", HttpStatus.NOT_FOUND),
-    CONCURRENCY_CONFLICT("A003", "동시 요청으로 처리에 실패했습니다. 잠시 후 다시 시도해주세요.", HttpStatus.CONFLICT),
+    INVALID_ACCOUNT_PASSWORD("A003", "계좌 비밀번호가 올바르지 않습니다.", HttpStatus.UNAUTHORIZED),
+    CONCURRENCY_CONFLICT("A004", "동시 요청으로 처리에 실패했습니다. 잠시 후 다시 시도해주세요.", HttpStatus.CONFLICT),
+
     DUPLICATE_REQUEST("T001", "이미 처리된 요청입니다.", HttpStatus.CONFLICT);
 
     private final String code;

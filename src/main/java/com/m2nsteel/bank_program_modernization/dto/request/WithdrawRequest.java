@@ -5,6 +5,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 public record WithdrawRequest(
+        @NotBlank String requestId,      // 중복 요청 방지용 (Idempotency Key)
+        @NotNull String accountNumber,
         @NotNull(message = "출금 금액은 필수입니다.")
         @Positive(message = "0원 이하의 금액은 출금할 수 없습니다.")
         Long amount,

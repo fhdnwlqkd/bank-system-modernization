@@ -50,4 +50,14 @@ public class Account {
         }
         this.balance += amount;
     }
+
+    public void withdraw(Long amount) {
+        if(amount <= 0) {
+            throw new BusinessException(ErrorCode.INVALID_INPUT);
+        }
+        if(this.balance < amount) {
+            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
+        }
+        this.balance -= amount;
+    }
 }

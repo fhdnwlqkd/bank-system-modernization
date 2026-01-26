@@ -1,6 +1,8 @@
 package com.m2nsteel.bank_program_modernization.service;
 
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
+import com.m2nsteel.bank_program_modernization.domain.Member;
+import com.m2nsteel.bank_program_modernization.domain.MerchantMember;
 import com.m2nsteel.bank_program_modernization.dto.request.BranchCreateRequest;
 import com.m2nsteel.bank_program_modernization.dto.request.MemberSignUpRequest;
 import com.m2nsteel.bank_program_modernization.dto.request.MerchantSignUpRequest;
@@ -51,20 +53,34 @@ class MemberServiceTest {
     }
 
     @Test
-    @DisplayName("가맹점 회원가입 성공 테스트")
+    @DisplayName("가맹점 회원가입 성공 및 전용 필드 검증 테스트")
     void merchant_signup_success() {
+        // 1. Given
         MerchantSignUpRequest request = new MerchantSignUpRequest(
                 "merchantuser",
                 "merchantpass",
-                "Merchant Name",
+                "맛있는 식당",
                 branchCode,
-                "123-45-67890",
-                "Retail"
+                "123-45-67890", // 사업자 번호
+                "RESTAURANT"    // 카테고리
         );
 
+        // 2. When
         var response = memberService.merchantSignUp(request);
+
+        // 3. Then
         assertThat(response.loginId()).isEqualTo("merchantuser");
-        assertThat(memberRepository.existsByLoginId("merchantuser")).isTrue();
+        assertThat(response.businessRegistrationNumber()).isEqualTo("123-45-67890");
+
+        // 4. DB 상세 검증
+        Member foundMember = memberRepository.findByLoginId("merchantuser")
+                .orElseThrow();
+
+        assertThat(foundMember).isInstanceOf(MerchantMember.class); // 실제 클래스 타입 확인
+
+        MerchantMember merchant = (MerchantMember) foundMember;
+        assertThat(merchant.getBusinessRegistrationNumber()).isEqualTo("123-45-67890");
+        assertThat(merchant.getMerchantCategory()).isEqualTo("RESTAURANT");
     }
 
     @Test

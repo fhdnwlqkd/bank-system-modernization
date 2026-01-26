@@ -26,6 +26,8 @@ public class TransferServiceTest {
 
     private String senderAccountNum;
     private String receiverAccountNum;
+    private final String senderLoginId = "sender";
+    private final String receiverLoginId = "receiver";
     private final String accountPassword = "password1234";
 
     @BeforeEach
@@ -40,17 +42,17 @@ public class TransferServiceTest {
         );
 
         // 2. 보내는 사람 가입 및 계좌 생성
-        var sender = memberService.signUp(new MemberSignUpRequest("sender", "p1", "Sender", branch.branchCode()));
+        var sender = memberService.signUp(new MemberSignUpRequest(senderLoginId, "p1", "Sender", branch.branchCode()));
         var senderAccount = accountService.createAccount(new AccountCreateRequest(sender.memberNumber(), branch.branchCode(), accountPassword));
         senderAccountNum = senderAccount.accountNumber();
 
         // 3. 받는 사람 가입 및 계좌 생성
-        var receiver = memberService.signUp(new MemberSignUpRequest("receiver", "p2", "Receiver", branch.branchCode()));
+        var receiver = memberService.signUp(new MemberSignUpRequest(receiverLoginId, "p2", "Receiver", branch.branchCode()));
         var receiverAccount = accountService.createAccount(new AccountCreateRequest(receiver.memberNumber(), branch.branchCode(), "any-pw"));
         receiverAccountNum = receiverAccount.accountNumber();
 
         // 4. 보내는 사람에게 초기 잔액 10,000원 입금
-        transactionService.deposit(new DepositRequest(UUID.randomUUID().toString(), senderAccountNum, 10000L));
+        transactionService.deposit(new DepositRequest(UUID.randomUUID().toString(), senderAccountNum, 10000L), senderLoginId);
     }
 
     @Test
@@ -67,7 +69,7 @@ public class TransferServiceTest {
         );
 
         // When
-        var response = transactionService.transfer(request);
+        var response = transactionService.transfer(request, senderLoginId);
 
         // Then
         assertThat(response.amount()).isEqualTo(transferAmount);
@@ -91,7 +93,7 @@ public class TransferServiceTest {
         );
 
         // When & Then
-        assertThrows(BusinessException.class, () -> transactionService.transfer(request));
+        assertThrows(BusinessException.class, () -> transactionService.transfer(request, senderLoginId));
     }
 
     @Test
@@ -107,7 +109,7 @@ public class TransferServiceTest {
         );
 
         // When & Then
-        assertThrows(BusinessException.class, () -> transactionService.transfer(request));
+        assertThrows(BusinessException.class, () -> transactionService.transfer(request, senderLoginId));
     }
 
     @Test
@@ -122,9 +124,9 @@ public class TransferServiceTest {
                 accountPassword,
                 1000L
         );
-        transactionService.transfer(request); // 첫 번째 요청
+        transactionService.transfer(request, senderLoginId); // 첫 번째 요청
 
         // When & Then: 동일한 requestId로 다시 요청
-        assertThrows(BusinessException.class, () -> transactionService.transfer(request));
+        assertThrows(BusinessException.class, () -> transactionService.transfer(request, senderLoginId));
     }
 }

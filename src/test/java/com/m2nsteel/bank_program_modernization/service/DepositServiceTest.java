@@ -25,6 +25,7 @@ class DepositServiceTest {
     @Autowired BranchService branchService;
 
     private String accountNum;
+    private String memberLoginId = "member1";
     private String accountPassword = "password1234";
 
     @BeforeEach
@@ -34,7 +35,7 @@ class DepositServiceTest {
                 new BranchCreateRequest("Branch1", "Address1", "Contact1")
         );
         // 2.가입 및 계좌 생성
-        var member = memberService.signUp(new MemberSignUpRequest("member1", "p1", "Member", branch.branchCode()));
+        var member = memberService.signUp(new MemberSignUpRequest(memberLoginId, "p1", "Member", branch.branchCode()));
         var account = accountService.createAccount(new AccountCreateRequest(member.memberNumber(), branch.branchCode(), accountPassword));
         accountNum = account.accountNumber();
     }
@@ -52,7 +53,7 @@ class DepositServiceTest {
                 accountNum,
                 depositAmount
         );
-        var response = transactionService.deposit(depositRequest);
+        var response = transactionService.deposit(depositRequest, memberLoginId);
 
         // 3. Then: 결과 검증
         assertEquals(depositAmount,response.amount());
@@ -70,11 +71,11 @@ class DepositServiceTest {
                 accountNum,
                 depositAmount
         );
-        var transactionResponse = transactionService.deposit(depositRequest);
+        var transactionResponse = transactionService.deposit(depositRequest, memberLoginId);
 
         // 2. When & Then: 동일한 요청 ID로 중복 입금 요청 시도
         assertThrows(BusinessException.class, () -> {
-            transactionService.deposit(depositRequest);
+            transactionService.deposit(depositRequest, memberLoginId);
         });
     }
 
@@ -91,7 +92,7 @@ class DepositServiceTest {
                 depositAmount
         );
         assertThrows(BusinessException.class, () -> {
-            transactionService.deposit(depositRequest);
+            transactionService.deposit(depositRequest, memberLoginId);
         });
     }
 }

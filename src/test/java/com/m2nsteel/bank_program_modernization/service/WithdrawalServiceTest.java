@@ -21,6 +21,7 @@ class WithdrawalServiceTest {
     @Autowired MemberService memberService;
     @Autowired BranchService branchService;
     private String accountNum;
+    private String memberLoginId = "member1";
     private final String accountPassword = "password1234";
 
     @BeforeEach
@@ -34,12 +35,12 @@ class WithdrawalServiceTest {
                 )
         );
         // 2.가입 및 계좌 생성
-        var member = memberService.signUp(new MemberSignUpRequest("member1", "p1", "Member", branch.branchCode()));
+        var member = memberService.signUp(new MemberSignUpRequest(memberLoginId, "p1", "Member", branch.branchCode()));
         var account = accountService.createAccount(new AccountCreateRequest(member.memberNumber(), branch.branchCode(), accountPassword));
         accountNum = account.accountNumber();
 
         // 3. 초기 잔액 10,000원 입금
-        transactionService.deposit(new DepositRequest(UUID.randomUUID().toString(), accountNum, 10000L));
+        transactionService.deposit(new DepositRequest(UUID.randomUUID().toString(), accountNum, 10000L), memberLoginId);
     }
 
     @Test
@@ -58,7 +59,7 @@ class WithdrawalServiceTest {
         );
 
         // 3. Then: 결과 검증
-        var response = transactionService.withdraw(withdrawRequest);
+        var response = transactionService.withdraw(withdrawRequest, memberLoginId);
         assertEquals(withdrawalAmount,response.amount());
         assertEquals(response.balanceAfter(), 0L);
     }
@@ -75,10 +76,10 @@ class WithdrawalServiceTest {
                 withdrawalAmount,
                 accountPassword
         );
-        var transactionResponse = transactionService.withdraw(withdrawRequest);
+        var transactionResponse = transactionService.withdraw(withdrawRequest, memberLoginId);
         // 2. When & Then: 동일한 요청 ID로 중복 입금 요청 시도
         assertThrows(BusinessException.class, () -> {
-            transactionService.withdraw(withdrawRequest);
+            transactionService.withdraw(withdrawRequest, memberLoginId);
         });
     }
 
@@ -96,7 +97,7 @@ class WithdrawalServiceTest {
         );
         // 2. When & Then: 잘못된 출금액 요청 시도
         assertThrows(BusinessException.class, () -> {
-            transactionService.withdraw(withdrawRequest);
+            transactionService.withdraw(withdrawRequest, memberLoginId);
         });
     }
 
@@ -114,7 +115,7 @@ class WithdrawalServiceTest {
         );
         // 2. When & Then: 잘못된 비밀번호 요청 시도
         assertThrows(BusinessException.class, () -> {
-            transactionService.withdraw(withdrawRequest);
+            transactionService.withdraw(withdrawRequest, memberLoginId);
         });
     }
 

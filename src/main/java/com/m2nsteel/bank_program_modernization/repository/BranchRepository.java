@@ -9,6 +9,6 @@ import java.util.Optional;
 public interface BranchRepository extends JpaRepository<Branch, Long> {
     boolean existsByName(String name);
     Optional<Branch> findByBranchCode(String branchCode);
-    @Query(value = "SELECT nextval('branch_num_seq')", nativeQuery = true)
+    @Query(value = "SELECT nextval('branch_code_seq')", nativeQuery = true)
     Long getNextBranchSequence();
 }

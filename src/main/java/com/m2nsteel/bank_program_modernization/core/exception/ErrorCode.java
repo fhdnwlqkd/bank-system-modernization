@@ -13,6 +13,8 @@ public enum ErrorCode {
     // member
     DUPLICATE_LOGIN_ID("M001", "이미 존재하는 아이디입니다.", HttpStatus.CONFLICT),
     MEMBER_NOT_FOUND("M002", "존재하지 않는 회원입니다.", HttpStatus.NOT_FOUND),
+    INVALID_PASSWORD("M003", "비밀번호가 올바르지 않습니다.", HttpStatus.UNAUTHORIZED),
+    MEMBER_NOT_ACTIVE("M004", "비활성화된 회원입니다.", HttpStatus.FORBIDDEN),
     // transaction & account
     INSUFFICIENT_BALANCE("A001", "잔액이 부족합니다.", HttpStatus.BAD_REQUEST),
     ACCOUNT_NOT_FOUND("A002", "존재하지 않는 계좌입니다.", HttpStatus.NOT_FOUND),

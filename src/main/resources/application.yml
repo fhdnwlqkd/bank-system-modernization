@@ -20,3 +20,9 @@ spring:
 
 server:
   port: 8080
+
+jwt:
+  secret: PG6aGzIz9S3ZvYdiPt98qetX6rGgMl2okDl7CU+2wKU=
+
+  access-expiration: 3600000      # 1시간 (60 * 60 * 1000)
+  refresh-expiration: 1209600000  # 14일 (14 * 24 * 60 * 60 * 1000)

@@ -29,7 +29,7 @@ public class TokenProvider {
 
     public String createAccessToken(String loginId, String role) {
         Claims claims = Jwts.claims().setSubject(loginId);
-        claims.put("role", role); // 권한 정보 추가
+        claims.put("role", role);
 
         Date now = new Date();
         return Jwts.builder()

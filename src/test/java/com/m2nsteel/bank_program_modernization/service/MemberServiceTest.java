@@ -1,13 +1,11 @@
 package com.m2nsteel.bank_program_modernization.service;
 
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
-import com.m2nsteel.bank_program_modernization.domain.Branch;
-import com.m2nsteel.bank_program_modernization.domain.Member;
 import com.m2nsteel.bank_program_modernization.dto.request.BranchCreateRequest;
 import com.m2nsteel.bank_program_modernization.dto.request.MemberSignUpRequest;
+import com.m2nsteel.bank_program_modernization.dto.request.MerchantSignUpRequest;
 import com.m2nsteel.bank_program_modernization.dto.response.BranchResponse;
 import com.m2nsteel.bank_program_modernization.repository.MemberRepository;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -50,6 +48,23 @@ class MemberServiceTest {
         var response = memberService.signUp(request);
         assertThat(response.loginId()).isEqualTo("testuser");
         assertThat(memberRepository.existsByLoginId("testuser")).isTrue();
+    }
+
+    @Test
+    @DisplayName("가맹점 회원가입 성공 테스트")
+    void merchant_signup_success() {
+        MerchantSignUpRequest request = new MerchantSignUpRequest(
+                "merchantuser",
+                "merchantpass",
+                "Merchant Name",
+                branchCode,
+                "123-45-67890",
+                "Retail"
+        );
+
+        var response = memberService.merchantSignUp(request);
+        assertThat(response.loginId()).isEqualTo("merchantuser");
+        assertThat(memberRepository.existsByLoginId("merchantuser")).isTrue();
     }
 
     @Test

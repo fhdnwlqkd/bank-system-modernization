@@ -4,10 +4,13 @@ import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
 import com.m2nsteel.bank_program_modernization.domain.Branch;
 import com.m2nsteel.bank_program_modernization.domain.Member;
+import com.m2nsteel.bank_program_modernization.domain.MerchantMember;
 import com.m2nsteel.bank_program_modernization.domain.constant.MemberRole;
 import com.m2nsteel.bank_program_modernization.domain.constant.MemberStatus;
 import com.m2nsteel.bank_program_modernization.dto.request.MemberSignUpRequest;
+import com.m2nsteel.bank_program_modernization.dto.request.MerchantSignUpRequest;
 import com.m2nsteel.bank_program_modernization.dto.response.MemberResponse;
+import com.m2nsteel.bank_program_modernization.dto.response.MerchantSignUpResponse;
 import com.m2nsteel.bank_program_modernization.repository.BranchRepository;
 import com.m2nsteel.bank_program_modernization.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -43,7 +46,7 @@ public class MemberService {
 
         // 3. 회원 번호 생성
         Long seq = memberRepository.getNextMemberSequence();
-        String memberNumber = "M-" + LocalDate.now().getYear() + "-" + seq;
+        String memberNumber = String.format("M-%d-%06d", LocalDate.now().getYear(), seq);
 
         // 4. 회원 엔티티 생성 및 저장
         Member member = Member.builder()
@@ -64,6 +67,50 @@ public class MemberService {
                 savedMember.getLoginId(),
                 savedMember.getMemberNumber(),
                 savedMember.getName()
+        );
+    }
+
+    /*
+    가맹정 회원 가입
+     */
+    public MerchantSignUpResponse merchantSignUp(MerchantSignUpRequest request) {
+        // 1. 아이디 중복 체크 및 지점 조회
+        if (memberRepository.existsByLoginId(request.loginId())) {
+            throw new BusinessException(ErrorCode.DUPLICATE_LOGIN_ID);
+        }
+        Branch branch = branchRepository.findByBranchCode(request.branchCode())
+                .orElseThrow(() -> new BusinessException(ErrorCode.BRANCH_NOT_FOUND));
+
+        // 2. 비밀번호 암호화
+        String encodedPassword = passwordEncoder.encode(request.password());
+
+        // 3. 회원 번호 생성
+        Long seq = memberRepository.getNextMemberSequence();
+        String memberNumber = String.format("MER-%d-%06d", LocalDate.now().getYear(), seq);
+
+        // 4. 회원 엔티티 생성 및 저장
+        MerchantMember merchantMember = MerchantMember.builder()
+                .loginId(request.loginId())
+                .password(encodedPassword)
+                .memberNumber(memberNumber)
+                .name(request.merchantName())
+                .branchId(branch.getId())
+                .role(MemberRole.MERCHANT)
+                .status(MemberStatus.ACTIVE)
+                .businessRegistrationNumber(request.businessRegistrationNumber())
+                .merchantCategory(request.merchantCategory())
+                .build();
+
+        MerchantMember savedMember = memberRepository.save(merchantMember);
+
+        // 5. 응답 DTO 변환
+        return new MerchantSignUpResponse(
+                savedMember.getId(),
+                savedMember.getLoginId(),
+                savedMember.getMemberNumber(),
+                merchantMember.getName(),
+                merchantMember.getBusinessRegistrationNumber(),
+                merchantMember.getMerchantCategory()
         );
     }
 }

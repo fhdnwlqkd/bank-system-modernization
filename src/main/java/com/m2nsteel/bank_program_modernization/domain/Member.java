@@ -7,10 +7,13 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Getter
-@Builder
+@SuperBuilder
+@Inheritance(strategy = InheritanceType.JOINED)
+@DiscriminatorColumn(name="role")
 @Table(name = "members")
 public class Member {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -32,7 +35,7 @@ public class Member {
     private Long branchId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "role", insertable = false, updatable = false)
     private MemberRole role;
 
     @Enumerated(EnumType.STRING)

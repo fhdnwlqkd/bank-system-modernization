@@ -2,7 +2,7 @@ package com.m2nsteel.bank_program_modernization.dto.response;
 
 import java.time.LocalDateTime;
 
-public record CardResponse(
+public record CardCreateResponse(
         Long id,
         String maskedCardNumber, // 예: 9410-****-****-1234
         String accountNumber,    // 연결된 계좌 번호

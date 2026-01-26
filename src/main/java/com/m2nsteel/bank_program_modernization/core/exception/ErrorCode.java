@@ -23,7 +23,12 @@ public enum ErrorCode {
 
     // branch
     DUPLICATE_BRANCH_NAME("B001", "이미 존재하는 지점 이름입니다.", HttpStatus.CONFLICT),
-    BRANCH_NOT_FOUND("B002", "존재하지 않는 지점입니다.", HttpStatus.NOT_FOUND);
+    BRANCH_NOT_FOUND("B002", "존재하지 않는 지점입니다.", HttpStatus.NOT_FOUND),
+
+    // Card
+    CARD_NOT_FOUND("CRD001", "존재하지 않는 카드입니다.", HttpStatus.NOT_FOUND),
+    CARD_NOT_ACTIVE("CRD002", "비활성화된 카드입니다.", HttpStatus.BAD_REQUEST),
+    SELF_PAYMENT_NOT_ALLOWED("T002", "본인 계좌로의 이체는 허용되지 않습니다.", HttpStatus.BAD_REQUEST);
 
     private final String code;
     private final String message;

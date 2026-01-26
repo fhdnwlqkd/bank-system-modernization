@@ -18,7 +18,9 @@ import java.time.LocalDateTime;
 @Transactional(readOnly = true)
 public class BranchService {
     private final BranchRepository branchRepository;
-
+    /*
+      지점 생성
+     */
     @Transactional
     public BranchResponse createBranch(BranchCreateRequest request) {
         // 1. 지점 이름 중복 확인

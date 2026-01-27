@@ -12,7 +12,7 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
 
     @Query("SELECT a FROM Account a " +
             "JOIN MerchantMember m ON a.memberId = m.id " +
-            "WHERE m.businessRegistrationNumber = :merchantName " +
+            "WHERE m.businessRegistrationNumber = :businessRegistrationNumber " +
             "AND a.status = 'ACTIVE'")
     Optional<Account> findByBRN(@Param("businessRegistrationNumber") String businessRegistrationNumber);
 }

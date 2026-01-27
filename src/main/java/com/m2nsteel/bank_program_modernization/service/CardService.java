@@ -2,14 +2,15 @@ package com.m2nsteel.bank_program_modernization.service;
 
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
-import com.m2nsteel.bank_program_modernization.domain.Account;
-import com.m2nsteel.bank_program_modernization.domain.Card;
-import com.m2nsteel.bank_program_modernization.domain.Transaction;
-import com.m2nsteel.bank_program_modernization.domain.TransactionItem;
+import com.m2nsteel.bank_program_modernization.domain.*;
 import com.m2nsteel.bank_program_modernization.domain.constant.CardStatus;
 import com.m2nsteel.bank_program_modernization.domain.constant.CardType;
 import com.m2nsteel.bank_program_modernization.domain.constant.TransactionStatus;
 import com.m2nsteel.bank_program_modernization.domain.constant.TransactionType;
+import com.m2nsteel.bank_program_modernization.domain.validator.AccountValidator;
+import com.m2nsteel.bank_program_modernization.domain.validator.IdempotencyValidator;
+import com.m2nsteel.bank_program_modernization.domain.validator.MemberValidator;
+import com.m2nsteel.bank_program_modernization.domain.validator.PasswordValidator;
 import com.m2nsteel.bank_program_modernization.dto.request.CardCreateRequest;
 import com.m2nsteel.bank_program_modernization.dto.request.CardPaymentRequest;
 import com.m2nsteel.bank_program_modernization.dto.response.CardCreateResponse;
@@ -30,19 +31,25 @@ import java.time.LocalDateTime;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class CardService {
-    @Autowired private final CardRepository cardRepository;
-    @Autowired private final AccountRepository accountRepository;
-    @Autowired private final TransactionRepository transactionRepository;
-    @Autowired private final PasswordEncoder passwordEncoder;
+    private final CardRepository cardRepository;
+    private final AccountRepository accountRepository;
+    private final TransactionRepository transactionRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final IdempotencyValidator idempotencyValidator;
+    private final AccountValidator accountValidator;
+    private final MemberValidator memberValidator;
+    private final PasswordValidator passwordValidator;
+
 
     /*
     카드 생성
      */
     @Transactional
-    public CardCreateResponse createCard(CardCreateRequest request) {
-        // 1. 계좌 존재 여부 확인 TODO: 본인 계좌인지 확인 로직 추가 필요
-        Account account = accountRepository.findByAccountNumber(request.accountNumber())
-                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
+    public CardCreateResponse createCard(CardCreateRequest request, String loginId) {
+        // 1. 계좌 존재 여부 확인
+        Member member = memberValidator.getActiveMember(loginId);
+        Account account = accountValidator.getActiveAccount(request.accountNumber());
+        accountValidator.verifyOwner(account, member.getId());
 
         // 2. 카드 번호 생성
         String cardNumber = cardNumberGenerator(CardType.valueOf(request.cardType()));
@@ -77,9 +84,7 @@ public class CardService {
     @Transactional
     public CardPaymentResponse pay(CardPaymentRequest request) {
         // 1. Idempotency Key 중복 체크
-        if (transactionRepository.existsByRequestId(request.requestId())) {
-            throw new BusinessException(ErrorCode.DUPLICATE_REQUEST);
-        }
+        idempotencyValidator.verify(request.requestId());
 
         // 2. 카드 조회
         Card card = cardRepository.findByCardNum(request.cardNumber())
@@ -91,9 +96,7 @@ public class CardService {
         }
 
         // 4. 카드 비밀번호 확인
-        if (!passwordEncoder.matches(request.cardPassword(), card.getPassword())) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT);
-        }
+        passwordValidator.verify(request.cardPassword(), card.getPassword());
 
         // 5. 카드 계좌 조회
         Account cardAccount = accountRepository.findById(card.getAccountId())

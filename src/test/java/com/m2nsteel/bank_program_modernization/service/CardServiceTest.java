@@ -4,6 +4,7 @@ import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
 import com.m2nsteel.bank_program_modernization.domain.constant.CardType;
 import com.m2nsteel.bank_program_modernization.dto.request.AccountCreateRequest;
+import com.m2nsteel.bank_program_modernization.dto.request.BranchCreateRequest;
 import com.m2nsteel.bank_program_modernization.dto.request.CardCreateRequest;
 import com.m2nsteel.bank_program_modernization.dto.request.MemberSignUpRequest;
 import com.m2nsteel.bank_program_modernization.repository.CardRepository;
@@ -30,25 +31,23 @@ class CardServiceTest {
     private Long memberId;
     private String accountNumber;
 
+    private String memberLoginId = "member1";
+    private String accountPassword = "password1234";
+    private String wrongLoginId = "wrongMember";
+
+
     @BeforeEach
     void setUp() {
         // 1. 지점 생성
-        var branchResponse = branchService.createBranch(
-                new com.m2nsteel.bank_program_modernization.dto.request.BranchCreateRequest(
-                        "Test Branch", "123 Test St", "555-0000"
-                )
+        var branch = branchService.createBranch(
+                new BranchCreateRequest("Branch1", "Address1", "Contact1")
         );
+        // 2.가입 및 계좌 생성
+        var member = memberService.signUp(new MemberSignUpRequest(memberLoginId, "p1", "Member", branch.branchCode()));
 
-        // 2. 테스트용 회원 가입
-        var memberResponse = memberService.signUp(new MemberSignUpRequest(
-                "tester", "pw123", "M123", branchResponse.branchCode()));
-        memberId = memberResponse.memberId();
-
-        // 3. 테스트용 계좌 생성
-        var accountResponse = accountService.createAccount(new AccountCreateRequest(
-                memberResponse.memberNumber(), branchResponse.branchCode(), "1234"
-        ));
-        accountNumber = accountResponse.accountNumber();
+        var account = accountService.createAccount(new AccountCreateRequest(member.memberNumber(), branch.branchCode(), accountPassword));
+        accountNumber = account.accountNumber();
+        var wrongMember = memberService.signUp(new MemberSignUpRequest(wrongLoginId, "p2", "Wrong Member", branch.branchCode()));
     }
 
     @Test
@@ -58,7 +57,7 @@ class CardServiceTest {
         CardCreateRequest request = new CardCreateRequest(accountNumber, "1234", "CHECK");
 
         // When
-        var response = cardService.createCard(request);
+        var response = cardService.createCard(request, memberLoginId);
 
         // Then
         assertThat(response.accountNumber()).isEqualTo(accountNumber);
@@ -72,21 +71,19 @@ class CardServiceTest {
         assertThat(cardRepository.findAll()).hasSize(1);
     }
 
-//    @Test
-//    @DisplayName("카드 발급 실패: 본인 계좌가 아님")
-//    void createCard_fail_notOwner() {
-//        // Given: 다른 사용자의 ID (memberId + 999)
-//        Long wrongMemberId = memberId + 999L;
-//        CardCreateRequest request = new CardCreateRequest(accountNumber, "1234", "CHECK");
-//
-//        // When & Then
-//        BusinessException exception = assertThrows(BusinessException.class, () -> {
-//            cardService.createCard(request, wrongMemberId);
-//        });
-//
-//        // 에러 코드 확인 (미리 정의한 ErrorCode에 따라 다를 수 있음)
-//        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.NOT_ACCOUNT_OWNER);
-//    }
+    @Test
+    @DisplayName("카드 발급 실패: 본인 계좌가 아님")
+    void createCard_fail_notOwner() {
+        CardCreateRequest request = new CardCreateRequest(accountNumber, "1234", "CHECK");
+
+        // When & Then
+        BusinessException exception = assertThrows(BusinessException.class, () -> {
+            cardService.createCard(request, wrongLoginId);
+        });
+
+        // 에러 코드 확인 (미리 정의한 ErrorCode에 따라 다를 수 있음)
+        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.UNAUTHORIZED_ACCOUNT_ACCESS);
+    }
 
     @Test
     @DisplayName("카드 발급 실패: 존재하지 않는 계좌")
@@ -96,7 +93,7 @@ class CardServiceTest {
 
         // When & Then
         assertThrows(BusinessException.class, () -> {
-            cardService.createCard(request);
+            cardService.createCard(request, memberLoginId);
         });
     }
 }

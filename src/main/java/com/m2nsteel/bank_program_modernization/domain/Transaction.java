@@ -7,47 +7,51 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-import java.time.LocalDateTime;
+import lombok.experimental.SuperBuilder;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Getter
-@Builder
-@Table(name="transactions", indexes = {})
-@EntityListeners(AuditingEntityListener.class)
-public class Transaction {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+@SuperBuilder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(name = "transactions", indexes = {
+        @Index(name = "idx_transaction_idempotency", columnList = "idempotencyKey")
+})
+public class Transaction extends BaseEntity {
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, updatable = false)
+    private TransactionType type;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private TransactionType type; // DEPOSIT, WITHDRAW, TRANSFER
+    private TransactionStatus status;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private TransactionStatus status; // PENDING, SUCCESS, FAIL
-
-    @Column(nullable = false)
+    @Column(nullable = false, updatable = false)
     private Long amount;
 
     private String failReason;
 
-    @CreatedDate
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime occurredAt;
+    // 중복 요청 방지
+    @Column(nullable = false, updatable = false, unique = true)
+    private String idempotencyKey;
 
     @Builder.Default
     @OneToMany(mappedBy = "transaction", cascade = CascadeType.ALL)
     private List<TransactionItem> items = new ArrayList<>();
 
-    // 요청 식별자 -> 중복 요청 방지용
-    @Column(nullable = false, updatable = false, unique = true)
-    private String requestId;
-
+    // 아이템 추가 및 연관관계 편의 메서드
     public void addItem(TransactionItem item) {
-        items.add(item);
+        this.items.add(item);
+    }
+
+    public void complete() {
+        this.status = TransactionStatus.SUCCESS;
+    }
+
+    public void fail(String reason) {
+        this.status = TransactionStatus.FAILED;
+        this.failReason = reason;
     }
 }

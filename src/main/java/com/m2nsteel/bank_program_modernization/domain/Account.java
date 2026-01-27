@@ -5,59 +5,58 @@ import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
 import com.m2nsteel.bank_program_modernization.domain.constant.AccountStatus;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Getter
-@Table(name = "accounts", indexes = {})
-@EntityListeners(AuditingEntityListener.class)
-@Builder
-public class Account {
+@SuperBuilder
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(name = "accounts", indexes = {
+        @Index(name = "idx_account_number", columnList = "accountNumber")
+})
+public class Account extends BaseEntity {
 
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    Long id;
     @Column(unique = true, nullable = false, updatable = false)
-    String accountNumber;
+    private String accountNumber;
 
     @Column(nullable = false)
-    String accountPassword;
+    private String accountPassword;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id", nullable = false, updatable = false)
+    private Member member;
 
     @Column(nullable = false)
-    Long memberId;
-
-    @Column(nullable = false)
-    Long balance;
+    private Long balance;
 
     @Enumerated(EnumType.STRING)
-    AccountStatus status;
+    @Column(nullable = false)
+    private AccountStatus status;
 
-    @Version
-    Long version;
-    Long branchId;
+    @Version // 낙관적 락을 위한 버전 필드
+    private Long version;
 
-    @CreatedDate
-    LocalDateTime createdAt;
-
+    // --- 비즈니스 로직 ---
     public void deposit(Long amount) {
-        if(amount <= 0) {
+        if (amount <= 0) {
             throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
         this.balance += amount;
     }
 
     public void withdraw(Long amount) {
-        if(amount <= 0) {
+        if (amount <= 0) {
             throw new BusinessException(ErrorCode.INVALID_INPUT);
         }
-        if(this.balance < amount) {
+        if (this.balance < amount) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
         }
         this.balance -= amount;
+    }
+
+    public void close() {
+        this.status = AccountStatus.INACTIVE;
     }
 }

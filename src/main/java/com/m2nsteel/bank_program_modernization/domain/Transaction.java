@@ -54,4 +54,26 @@ public class Transaction extends BaseEntity {
         this.status = TransactionStatus.FAILED;
         this.failReason = reason;
     }
+
+    public static Transaction createDeposit(Long amount, String idempotencyKey) {
+        return create(TransactionType.DEPOSIT, amount, idempotencyKey);
+    }
+
+    public static Transaction createWithdrawal(Long amount, String idempotencyKey) {
+        return create(TransactionType.WITHDRAW, amount, idempotencyKey);
+    }
+
+    public static Transaction createTransfer(Long amount, String idempotencyKey) {
+        return create(TransactionType.TRANSFER, amount, idempotencyKey);
+    }
+
+    private static Transaction create(TransactionType type, Long amount, String idempotencyKey) {
+        return Transaction.builder()
+                .type(type)
+                .amount(amount)
+                .idempotencyKey(idempotencyKey)
+                .status(TransactionStatus.SUCCESS)
+                .items(new ArrayList<>())
+                .build();
+    }
 }

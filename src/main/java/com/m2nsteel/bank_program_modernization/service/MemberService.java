@@ -6,11 +6,8 @@ import com.m2nsteel.bank_program_modernization.domain.Account;
 import com.m2nsteel.bank_program_modernization.domain.Admin;
 import com.m2nsteel.bank_program_modernization.domain.Member;
 import com.m2nsteel.bank_program_modernization.domain.Merchant;
-import com.m2nsteel.bank_program_modernization.service.mapper.MemberMapper;
-import com.m2nsteel.bank_program_modernization.dto.command.*;
-import com.m2nsteel.bank_program_modernization.dto.result.AdminResult;
-import com.m2nsteel.bank_program_modernization.dto.result.MemberResult;
-import com.m2nsteel.bank_program_modernization.dto.result.MerchantResult;
+import com.m2nsteel.bank_program_modernization.usecase.MemberUsecase;
+import com.m2nsteel.bank_program_modernization.usecase.mapper.MemberMapper;
 import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
 import com.m2nsteel.bank_program_modernization.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
@@ -40,7 +37,7 @@ public class MemberService implements UserDetailsService {
      * 1. 일반 회원 가입 (Member)
      */
     @Transactional
-    public MemberResult signUp(MemberSignUpCommand command) {
+    public MemberUsecase.MemberResult signUp(MemberUsecase.MemberSignUpCommand command) {
         validateDuplicateLoginId(command.loginId());
 
         String encodedPassword = passwordEncoder.encode(command.password());
@@ -59,7 +56,7 @@ public class MemberService implements UserDetailsService {
      * 2. 가맹점 회원 가입 (Merchant)
      */
     @Transactional
-    public MerchantResult merchantSignUp(MerchantSignUpCommand command) {
+    public MemberUsecase.MerchantResult merchantSignUp(MemberUsecase.MerchantSignUpCommand command) {
         validateDuplicateLoginId(command.loginId());
 
         String encodedPassword = passwordEncoder.encode(command.password());
@@ -84,7 +81,7 @@ public class MemberService implements UserDetailsService {
      * 3. 관리자 회원 가입 (Admin)
      */
     @Transactional
-    public AdminResult adminSignUp(AdminSignUpCommand command) {
+    public MemberUsecase.AdminResult adminSignUp(MemberUsecase.AdminSignUpCommand command) {
         validateDuplicateLoginId(command.loginId());
 
         String encodedPassword = passwordEncoder.encode(command.password());
@@ -104,7 +101,7 @@ public class MemberService implements UserDetailsService {
      * 내 정보 수정
      */
     @Transactional
-    public MemberResult updateMyInfo(String externalId, MemberUpdateCommand command) {
+    public MemberUsecase.MemberResult updateMyInfo(String externalId, MemberUsecase.MemberUpdateCommand command) {
         Member member = findMemberOrThrow(externalId);
 
         String encodedPassword = encodePasswordIfPresent(command.password());
@@ -117,7 +114,7 @@ public class MemberService implements UserDetailsService {
      * 가맹점 정보 수정
      */
     @Transactional
-    public MerchantResult updateMerchantInfo(String externalId, MerchantUpdateCommand command) {
+    public MemberUsecase.MerchantResult updateMerchantInfo(String externalId, MemberUsecase.MerchantUpdateCommand command) {
         Member member = findMemberOrThrow(externalId);
 
         // 안전한 타입 캐스팅 검증
@@ -136,7 +133,7 @@ public class MemberService implements UserDetailsService {
      * 관리자 정보 수정
      */
     @Transactional
-    public AdminResult updateAdminInfo(String externalId, AdminUpdateCommand command) {
+    public MemberUsecase.AdminResult updateAdminInfo(String externalId, MemberUsecase.AdminUpdateCommand command) {
         Member member = findMemberOrThrow(externalId);
 
         // 안전한 타입 캐스팅 검증
@@ -163,9 +160,9 @@ public class MemberService implements UserDetailsService {
     /**
      * [Admin] 멤버 목록 조회
      */
-//    public Page<MemberResult> getMembersByAdmin(MemberSearchCondition condition, Pageable pageable) {}
+//    public Page<MemberUsecase.MemberResult> getMembersByAdmin(MemberSearchCondition condition, Pageable pageable) {}
 
-    public MemberResult getMemberInfo(String externalId) {
+    public MemberUsecase.MemberResult getMemberInfo(String externalId) {
         return memberMapper.toResult(findMemberOrThrow(externalId));
     }
 

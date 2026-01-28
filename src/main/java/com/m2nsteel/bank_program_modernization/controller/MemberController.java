@@ -18,9 +18,45 @@ import org.springframework.web.bind.annotation.*;
 public class MemberController {
     private final MemberService memberService;
 
+    /**
+     * ======================
+     * Member APIs
+     * ======================
+     */
+    @GetMapping("/members/me")
+    public ResponseEntity<MemberResponse> getMyInfo(@AuthenticationPrincipal UserDetails userDetails) {
+        String loginId = userDetails.getUsername();
+        return ResponseEntity.ok(memberService.getMemberInfo(loginId));
+    }
+
+    @GetMapping("members/me/accounts")
+    public void getMyAccounts() {
+
+    }
+
+    @GetMapping("/members/me/cards")
+    public void getMyCards() {
+
+    }
+
     @PostMapping("/members")
     public ResponseEntity<MemberResponse> signUp(@Valid @RequestBody MemberSignUpRequest request) {
         return ResponseEntity.ok(memberService.signUp(request));
+    }
+
+    @DeleteMapping("/members/me")
+    public void deleteMember() {
+
+    }
+
+    /**
+     * ======================
+     * Merchant APIs
+     * ======================
+     */
+    @GetMapping("/merchants/me")
+    public void getMerchantInfo() {
+
     }
 
     @PostMapping("/merchants")
@@ -28,9 +64,38 @@ public class MemberController {
         return ResponseEntity.ok(memberService.merchantSignUp(request));
     }
 
-    @GetMapping("/members/me")
-    public ResponseEntity<MemberResponse> getMyInfo(@AuthenticationPrincipal UserDetails userDetails) {
-        String loginId = userDetails.getUsername();
-        return ResponseEntity.ok(memberService.getMemberInfo(loginId));
+    @PatchMapping("/merchants/me")
+    public void updateMerchantInfo() {
+
+    }
+
+    @DeleteMapping("/merchants/me")
+    public void deleteMerchant() {
+
+    }
+
+    /**
+    * ======================
+    * Admin APIs
+    * ======================
+    */
+    @GetMapping("/members")
+    public void getAllMembers() {
+
+    }
+
+    @GetMapping("/merchants")
+    public void getAllMerchants() {
+
+    }
+
+    @GetMapping("/members/{memberNumber}")
+    public void getMemberDetails(@PathVariable String memberNumber) {
+
+    }
+
+    @GetMapping("/members/{memberNumber}/status")
+    public void getMemberStatus(@PathVariable String memberNumber) {
+
     }
 }

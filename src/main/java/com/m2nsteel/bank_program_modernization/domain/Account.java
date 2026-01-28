@@ -9,6 +9,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 @Entity
 @Getter
 @SuperBuilder
@@ -57,6 +59,16 @@ public class Account extends BaseEntity {
     }
 
     public void close() {
-        this.status = AccountStatus.INACTIVE;
+        this.status = AccountStatus.CLOSED;
+    }
+
+    public static Account create(String accountPassword, Member member) {
+        return Account.builder()
+                .accountNumber("110-" + ThreadLocalRandom.current().nextInt(100, 999) + "-" + System.currentTimeMillis() % 1000000)
+                .accountPassword(accountPassword)
+                .member(member)
+                .balance(0L)
+                .status(AccountStatus.ACTIVE)
+                .build();
     }
 }

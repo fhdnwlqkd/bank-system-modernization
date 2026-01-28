@@ -2,10 +2,9 @@ package com.m2nsteel.bank_program_modernization.domain;
 
 import com.m2nsteel.bank_program_modernization.domain.constant.MemberStatus;
 import com.m2nsteel.bank_program_modernization.domain.constant.MemberRole;
+import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 @Entity
@@ -17,7 +16,7 @@ import lombok.experimental.SuperBuilder;
 @Table(name = "members", indexes = {
         @Index(name = "idx_member_login_id", columnList = "loginId")
 })
-public abstract class Member extends BaseEntity {
+public class Member extends BaseEntity {
     private String name;
     private String contact;
 
@@ -34,4 +33,25 @@ public abstract class Member extends BaseEntity {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private MemberStatus status;
+
+    public void updateInfo(String name, String contact, @Nullable String encodedPassword) {
+        if (name != null) this.name = name;
+        if (contact != null) this.contact = contact;
+        if (encodedPassword != null) this.password = encodedPassword;
+    }
+
+    public void withdraw() {
+        this.status = MemberStatus.WITHDRAWN;
+    }
+
+    public static Member create(String loginId, String password, String name, String contact) {
+        return Member.builder()
+                .loginId(loginId)
+                .password(password)
+                .name(name)
+                .contact(contact)
+                .role(MemberRole.USER)
+                .status(MemberStatus.ACTIVE)
+                .build();
+    }
 }

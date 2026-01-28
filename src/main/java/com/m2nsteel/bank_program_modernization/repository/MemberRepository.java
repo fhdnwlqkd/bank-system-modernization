@@ -10,6 +10,7 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
     boolean existsByLoginId(String loginId);
     Optional<Member> findByLoginId(String loginId);
     Optional<Member> findByMemberNumber(String memberNumber);
+    Optional<Member> findByExternalId(String externalId);
     @Query(value = "SELECT nextval('member_num_seq')", nativeQuery = true)
     Long getNextMemberSequence();
 }

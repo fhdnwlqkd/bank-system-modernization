@@ -2,19 +2,20 @@ package com.m2nsteel.bank_program_modernization.service;
 
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
-import com.m2nsteel.bank_program_modernization.domain.Branch;
+import com.m2nsteel.bank_program_modernization.domain.Account;
+import com.m2nsteel.bank_program_modernization.domain.Admin;
 import com.m2nsteel.bank_program_modernization.domain.Member;
-import com.m2nsteel.bank_program_modernization.domain.MerchantMember;
-import com.m2nsteel.bank_program_modernization.domain.constant.MemberRole;
-import com.m2nsteel.bank_program_modernization.domain.constant.MemberStatus;
-import com.m2nsteel.bank_program_modernization.dto.request.MemberSignUpRequest;
-import com.m2nsteel.bank_program_modernization.dto.request.MerchantSignUpRequest;
-import com.m2nsteel.bank_program_modernization.dto.response.MemberResponse;
-import com.m2nsteel.bank_program_modernization.dto.response.MerchantSignUpResponse;
-import com.m2nsteel.bank_program_modernization.repository.BranchRepository;
+import com.m2nsteel.bank_program_modernization.domain.Merchant;
+import com.m2nsteel.bank_program_modernization.service.mapper.MemberMapper;
+import com.m2nsteel.bank_program_modernization.dto.command.*;
+import com.m2nsteel.bank_program_modernization.dto.result.AdminResult;
+import com.m2nsteel.bank_program_modernization.dto.result.MemberResult;
+import com.m2nsteel.bank_program_modernization.dto.result.MerchantResult;
+import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
 import com.m2nsteel.bank_program_modernization.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
+import org.jspecify.annotations.Nullable;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -22,121 +23,185 @@ import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDate;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
 @NullMarked
 @Transactional(readOnly = true)
 public class MemberService implements UserDetailsService {
+
     private final MemberRepository memberRepository;
-    private final BranchRepository branchRepository;
+    private final AccountRepository accountRepository;
+    private final MemberMapper memberMapper;
     private final PasswordEncoder passwordEncoder;
 
-    /*
-      회원 가입
+    /**
+     * 1. 일반 회원 가입 (Member)
      */
     @Transactional
-    public MemberResponse signUp(MemberSignUpRequest request) {
+    public MemberResult signUp(MemberSignUpCommand command) {
+        validateDuplicateLoginId(command.loginId());
 
-        // 1. 아이디 중복 체크 및 지점 조회
-        if (memberRepository.existsByLoginId(request.loginId())) {
-            throw new BusinessException(ErrorCode.DUPLICATE_LOGIN_ID);
-        }
-        Branch branch = branchRepository.findByBranchCode(request.branchCode())
-                .orElseThrow(() -> new BusinessException(ErrorCode.BRANCH_NOT_FOUND));
+        String encodedPassword = passwordEncoder.encode(command.password());
 
-        // 2. 비밀번호 암호화
-        String encodedPassword = passwordEncoder.encode(request.password());
-
-        // 3. 회원 번호 생성
-        Long seq = memberRepository.getNextMemberSequence();
-        String memberNumber = String.format("M-%d-%06d", LocalDate.now().getYear(), seq);
-
-        // 4. 회원 엔티티 생성 및 저장
-        Member member = Member.builder()
-                .loginId(request.loginId())
-                .password(encodedPassword)
-                .memberNumber(memberNumber)
-                .name(request.name())
-                .branchId(branch.getId())
-                .role(MemberRole.USER)
-                .status(MemberStatus.ACTIVE)
-                .build();
-
-        Member savedMember = memberRepository.save(member);
-
-        // 5. 응답 DTO 변환
-        return new MemberResponse(
-                savedMember.getId(),
-                savedMember.getLoginId(),
-                savedMember.getMemberNumber(),
-                savedMember.getName()
+        Member member = Member.create(
+                command.loginId(),
+                encodedPassword,
+                command.name(),
+                command.contact()
         );
+
+        return memberMapper.toResult(memberRepository.save(member));
     }
 
-    /*
-        가맹점 회원 가입
+    /**
+     * 2. 가맹점 회원 가입 (Merchant)
      */
-    public MerchantSignUpResponse merchantSignUp(MerchantSignUpRequest request) {
-        // 1. 아이디 중복 체크 및 지점 조회
-        if (memberRepository.existsByLoginId(request.loginId())) {
+    @Transactional
+    public MerchantResult merchantSignUp(MerchantSignUpCommand command) {
+        validateDuplicateLoginId(command.loginId());
+
+        String encodedPassword = passwordEncoder.encode(command.password());
+
+        Merchant merchant = Merchant.create(
+                command.loginId(),
+                encodedPassword,
+                command.name(),
+                command.contact(),
+                command.businessNumber(),
+                command.shopName(),
+                command.category()
+        );
+
+        Merchant savedMerchant = memberRepository.save(merchant);
+        createMerchantAccount(savedMerchant);
+
+        return memberMapper.toResult(savedMerchant);
+    }
+
+    /**
+     * 3. 관리자 회원 가입 (Admin)
+     */
+    @Transactional
+    public AdminResult adminSignUp(AdminSignUpCommand command) {
+        validateDuplicateLoginId(command.loginId());
+
+        String encodedPassword = passwordEncoder.encode(command.password());
+
+        Admin admin = Admin.create(
+                command.loginId(),
+                encodedPassword,
+                command.name(),
+                command.contact(),
+                command.department()
+        );
+
+        return memberMapper.toResult(memberRepository.save(admin));
+    }
+
+    /**
+     * 내 정보 수정
+     */
+    @Transactional
+    public MemberResult updateMyInfo(String externalId, MemberUpdateCommand command) {
+        Member member = findMemberOrThrow(externalId);
+
+        String encodedPassword = encodePasswordIfPresent(command.password());
+        member.updateInfo(command.name(), command.contact(), encodedPassword);
+
+        return memberMapper.toResult(member);
+    }
+
+    /**
+     * 가맹점 정보 수정
+     */
+    @Transactional
+    public MerchantResult updateMerchantInfo(String externalId, MerchantUpdateCommand command) {
+        Member member = findMemberOrThrow(externalId);
+
+        // 안전한 타입 캐스팅 검증
+        if (!(member instanceof Merchant merchant)) {
+            throw new BusinessException(ErrorCode.INVALID_MEMBER_TYPE);
+        }
+
+        String encodedPassword = encodePasswordIfPresent(command.password());
+        merchant.updateInfo(command.name(), command.contact(), encodedPassword);
+        merchant.updateMerchant(command.shopName(), command.category());
+
+        return memberMapper.toResult(merchant);
+    }
+
+    /**
+     * 관리자 정보 수정
+     */
+    @Transactional
+    public AdminResult updateAdminInfo(String externalId, AdminUpdateCommand command) {
+        Member member = findMemberOrThrow(externalId);
+
+        // 안전한 타입 캐스팅 검증
+        if (!(member instanceof Admin admin)) {
+            throw new BusinessException(ErrorCode.INVALID_MEMBER_TYPE);
+        }
+
+        String encodedPassword = encodePasswordIfPresent(command.password());
+        admin.updateInfo(command.name(), command.contact(), encodedPassword);
+        admin.updateAdmin(command.department());
+
+        return memberMapper.toResult(admin);
+    }
+
+    /**
+     * 회원 탈퇴
+     */
+    @Transactional
+    public void withdraw(String externalId) {
+        Member member = findMemberOrThrow(externalId);
+        member.withdraw();
+    }
+
+    /**
+     * [Admin] 멤버 목록 조회
+     */
+//    public Page<MemberResult> getMembersByAdmin(MemberSearchCondition condition, Pageable pageable) {}
+
+    public MemberResult getMemberInfo(String externalId) {
+        return memberMapper.toResult(findMemberOrThrow(externalId));
+    }
+
+    // --- 헬퍼 메서드 ---
+
+    private Member findMemberOrThrow(String externalId) {
+        return memberRepository.findByExternalId(externalId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+    }
+
+    private void validateDuplicateLoginId(String loginId) {
+        if (memberRepository.existsByLoginId(loginId)) {
             throw new BusinessException(ErrorCode.DUPLICATE_LOGIN_ID);
         }
-        Branch branch = branchRepository.findByBranchCode(request.branchCode())
-                .orElseThrow(() -> new BusinessException(ErrorCode.BRANCH_NOT_FOUND));
-
-        // 2. 비밀번호 암호화
-        String encodedPassword = passwordEncoder.encode(request.password());
-
-        // 3. 회원 번호 생성
-        Long seq = memberRepository.getNextMemberSequence();
-        String memberNumber = String.format("MER-%d-%06d", LocalDate.now().getYear(), seq);
-
-        // 4. 회원 엔티티 생성 및 저장
-        MerchantMember merchantMember = MerchantMember.builder()
-                .loginId(request.loginId())
-                .password(encodedPassword)
-                .memberNumber(memberNumber)
-                .name(request.merchantName())
-                .branchId(branch.getId())
-                .role(MemberRole.MERCHANT)
-                .status(MemberStatus.ACTIVE)
-                .businessRegistrationNumber(request.businessRegistrationNumber())
-                .merchantCategory(request.merchantCategory())
-                .build();
-
-        MerchantMember savedMember = memberRepository.save(merchantMember);
-
-        // 5. 응답 DTO 변환
-        return new MerchantSignUpResponse(
-                savedMember.getId(),
-                savedMember.getLoginId(),
-                savedMember.getMemberNumber(),
-                merchantMember.getName(),
-                merchantMember.getBusinessRegistrationNumber(),
-                merchantMember.getMerchantCategory()
-        );
     }
 
-    public MemberResponse getMemberInfo(String loginId) {
-        Member member = memberRepository.findByLoginId(loginId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
-
-        return new MemberResponse(
-                member.getId(),
-                member.getLoginId(),
-                member.getMemberNumber(),
-                member.getName()
+    private void createMerchantAccount(Merchant merchant) {
+        Account account = Account.create(
+                merchant.getPassword(),
+                merchant
         );
+        accountRepository.save(account);
     }
+
+    private @Nullable String encodePasswordIfPresent(@Nullable String rawPassword) {
+        if (StringUtils.hasText(rawPassword)) {
+            return passwordEncoder.encode(rawPassword);
+        }
+        return null;
+    }
+
     @Override
     public UserDetails loadUserByUsername(String loginId) throws UsernameNotFoundException {
         Member member = memberRepository.findByLoginId(loginId)
                 .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + loginId));
 
-        // Spring Security의 User 객체로 변환하여 반환
         return User.builder()
                 .username(member.getLoginId())
                 .password(member.getPassword())

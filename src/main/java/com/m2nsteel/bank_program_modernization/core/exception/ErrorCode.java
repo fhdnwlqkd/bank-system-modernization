@@ -10,6 +10,7 @@ public enum ErrorCode {
     // Common Errors
     INVALID_INPUT("C001", "잘못된 입력값입니다.", HttpStatus.BAD_REQUEST),
     INTERNAL_SERVER_ERROR("C002", "서버 내부 오류가 발생했습니다.", HttpStatus.INTERNAL_SERVER_ERROR),
+    INVALID_MEMBER_TYPE("C003", "유효하지 않은 회원 유형입니다.", HttpStatus.BAD_REQUEST),
 
     // member
     DUPLICATE_LOGIN_ID("M001", "이미 존재하는 아이디입니다.", HttpStatus.CONFLICT),

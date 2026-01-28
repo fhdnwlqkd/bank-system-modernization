@@ -1,12 +1,9 @@
 package com.m2nsteel.bank_program_modernization.service;
 
-import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
-import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
 import com.m2nsteel.bank_program_modernization.domain.Account;
 import com.m2nsteel.bank_program_modernization.domain.Member;
 import com.m2nsteel.bank_program_modernization.domain.Transaction;
 import com.m2nsteel.bank_program_modernization.domain.TransactionItem;
-import com.m2nsteel.bank_program_modernization.domain.constant.AccountStatus;
 import com.m2nsteel.bank_program_modernization.domain.constant.TransactionStatus;
 import com.m2nsteel.bank_program_modernization.domain.constant.TransactionType;
 import com.m2nsteel.bank_program_modernization.domain.validator.AccountValidator;
@@ -18,11 +15,8 @@ import com.m2nsteel.bank_program_modernization.dto.request.TransferRequest;
 import com.m2nsteel.bank_program_modernization.dto.request.WithdrawRequest;
 import com.m2nsteel.bank_program_modernization.dto.response.TransactionResponse;
 import com.m2nsteel.bank_program_modernization.dto.response.TransferResponse;
-import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
-import com.m2nsteel.bank_program_modernization.repository.MemberRepository;
 import com.m2nsteel.bank_program_modernization.repository.TransactionRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

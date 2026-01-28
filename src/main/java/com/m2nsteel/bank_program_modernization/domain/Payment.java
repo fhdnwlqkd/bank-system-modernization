@@ -22,11 +22,11 @@ public class Payment extends BaseEntity {
     private Card card;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "merchant_id", nullable = false)
-    private Merchant merchant;
+    @JoinColumn(name = "merchant_account_id", nullable = false)
+    private Account merchantAccount;
 
     @Column(nullable = false)
-    private Long totalAmount;      // 최초 결제 금액
+    private Long amount;      // 최초 결제 금액
 
     @Column(nullable = false)
     private Long refundedAmount;   // 현재까지 환불된 누적 금액
@@ -40,11 +40,23 @@ public class Payment extends BaseEntity {
 
     // --- 비즈니스 로직 ---
     public void refund(Long amount) {
-        if (this.refundedAmount + amount > this.totalAmount) {
+        if (this.refundedAmount + amount > this.amount) {
             throw new BusinessException(ErrorCode.EXCEED_REFUND_AMOUNT);
         }
         this.refundedAmount += amount;
-        this.status = (this.refundedAmount.equals(this.totalAmount))
+        this.status = (this.refundedAmount.equals(this.amount))
                 ? PaymentStatus.REFUNDED : PaymentStatus.PARTIAL_REFUNDED;
     }
+
+    public static Payment create(Card card, Account merchantAccount, Transaction transaction, Long amount, String idempotencyKey) {
+        return Payment.builder()
+                .card(card)
+                .merchantAccount(merchantAccount)
+                .transaction(transaction)
+                .amount(amount)
+                .refundedAmount(0L)
+                .idempotencyKey(idempotencyKey)
+                .build();
+    }
+}
 }

@@ -9,6 +9,7 @@ import java.util.Optional;
 public interface CardRepository extends JpaRepository<Card, Long> {
     @Query(value = "SELECT nextval('card_num_seq')", nativeQuery = true)
     Long getNextCardSequence();
-
+    Optional<Card> findByExternalId(String externalId);
+    Optional<Card> findByCardNumber(String cardNumber);
     Optional<Card> findByCardNum(String cardNum);
 }

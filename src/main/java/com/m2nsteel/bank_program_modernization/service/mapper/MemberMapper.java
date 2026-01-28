@@ -1,4 +1,4 @@
-package com.m2nsteel.bank_program_modernization.usecase.mapper;
+package com.m2nsteel.bank_program_modernization.service.mapper;
 
 import com.m2nsteel.bank_program_modernization.domain.Admin;
 import com.m2nsteel.bank_program_modernization.domain.Member;

@@ -67,6 +67,13 @@ public class Transaction extends BaseEntity {
         return create(TransactionType.TRANSFER, amount, idempotencyKey);
     }
 
+    public static Transaction createPayment(Long amount, String idempotencyKey) {
+        return create(TransactionType.PAYMENT, amount, idempotencyKey);
+    }
+
+    public static Transaction createRefund(Long amount, String idempotencyKey) {
+        return create(TransactionType.REFUND, amount, idempotencyKey);
+    }
     private static Transaction create(TransactionType type, Long amount, String idempotencyKey) {
         return Transaction.builder()
                 .type(type)

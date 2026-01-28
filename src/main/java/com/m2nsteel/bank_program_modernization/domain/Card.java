@@ -8,6 +8,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.experimental.SuperBuilder;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -23,7 +24,7 @@ public class Card extends BaseEntity {
     private String cardNumber;
 
     @Column(nullable = false)
-    private String pin;
+    private String password;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "account_id", nullable = false, updatable = false)
@@ -37,10 +38,25 @@ public class Card extends BaseEntity {
     @Column(nullable = false)
     private CardStatus status;
 
-    private LocalDateTime expiredAt;
+    private LocalDate expiredAt;
 
     // --- 비즈니스 로직 ---
-    public void deactivate() {
-        this.status = CardStatus.INACTIVE;
+    public void changeStatus(CardStatus newStatus) {
+        this.status = newStatus;
+    }
+
+    public static Card create(
+            Account account,
+            String cardNumber,
+            CardType cardType,
+            LocalDate expiredAt
+    ) {
+        return Card.builder()
+                .account(account)
+                .cardNumber(cardNumber)
+                .cardType(cardType)
+                .status(CardStatus.ACTIVE)
+                .expiredAt(expiredAt)
+                .build();
     }
 }

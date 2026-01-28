@@ -17,6 +17,7 @@ public enum ErrorCode {
     MEMBER_NOT_FOUND("M002", "존재하지 않는 회원입니다.", HttpStatus.NOT_FOUND),
     INVALID_PASSWORD("M003", "비밀번호가 올바르지 않습니다.", HttpStatus.UNAUTHORIZED),
     MEMBER_NOT_ACTIVE("M004", "비활성화된 회원입니다.", HttpStatus.FORBIDDEN),
+    MERCHANT_ACCOUNT_NOT_FOUND("M005", "가맹점에 연결된 계좌를 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
 
     // account
     INSUFFICIENT_BALANCE("A001", "잔액이 부족합니다.", HttpStatus.BAD_REQUEST),
@@ -34,9 +35,11 @@ public enum ErrorCode {
     CARD_NOT_FOUND("CRD001", "존재하지 않는 카드입니다.", HttpStatus.NOT_FOUND),
     CARD_NOT_ACTIVE("CRD002", "비활성화된 카드입니다.", HttpStatus.BAD_REQUEST),
     SELF_PAYMENT_NOT_ALLOWED("T002", "본인 계좌로의 이체는 허용되지 않습니다.", HttpStatus.BAD_REQUEST),
+    INVALID_CARD_PASSWORD("CRD003", "카드 비밀번호가 올바르지 않습니다.", HttpStatus.UNAUTHORIZED),
 
     // Refund
-    EXCEED_REFUND_AMOUNT("R001", "환불 금액이 결제 금액을 초과합니다.", HttpStatus.BAD_REQUEST);
+    EXCEED_REFUND_AMOUNT("R001", "환불 금액이 결제 금액을 초과합니다.", HttpStatus.BAD_REQUEST),
+    PAYMENT_NOT_FOUND("P001", "존재하지 않는 결제입니다.", HttpStatus.NOT_FOUND);
 
     private final String code;
     private final String message;

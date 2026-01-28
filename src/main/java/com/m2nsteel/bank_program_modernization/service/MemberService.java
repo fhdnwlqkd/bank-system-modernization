@@ -7,7 +7,7 @@ import com.m2nsteel.bank_program_modernization.domain.Admin;
 import com.m2nsteel.bank_program_modernization.domain.Member;
 import com.m2nsteel.bank_program_modernization.domain.Merchant;
 import com.m2nsteel.bank_program_modernization.usecase.MemberUsecase;
-import com.m2nsteel.bank_program_modernization.usecase.mapper.MemberMapper;
+import com.m2nsteel.bank_program_modernization.service.mapper.MemberMapper;
 import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
 import com.m2nsteel.bank_program_modernization.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;

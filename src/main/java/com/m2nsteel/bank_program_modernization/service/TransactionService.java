@@ -9,7 +9,7 @@ import com.m2nsteel.bank_program_modernization.domain.constant.AccountStatus;
 import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
 import com.m2nsteel.bank_program_modernization.repository.TransactionRepository;
 import com.m2nsteel.bank_program_modernization.usecase.TransactionUsecase;
-import com.m2nsteel.bank_program_modernization.usecase.mapper.TransactionMapper;
+import com.m2nsteel.bank_program_modernization.service.mapper.TransactionMapper;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.security.crypto.password.PasswordEncoder;

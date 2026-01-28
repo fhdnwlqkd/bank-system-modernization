@@ -1,0 +1,66 @@
+package com.m2nsteel.bank_program_modernization.usecase;
+
+import org.jspecify.annotations.NullMarked;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+@NullMarked
+public class CardUsecase {
+
+    // --- 입력(Command) ---
+    public record IssueCardCommand(
+            String accountNumber,
+            String cardType, // CHECK, CREDIT 등
+            String idempotencyKey
+    ) {}
+
+    public record UpdateCardStatusCommand(
+            String externalId,
+            String status // ACTIVE, BLOCKED, TERMINATED
+    ) {}
+
+    public record CardPaymentCommand(
+            String cardNumber,
+            Long amount,
+            String cardPassword,
+            String businessRegistrationNumber, // 사업자 등록 번호(BRN)
+            String idempotencyKey
+    ) {}
+
+    public record RefundCommand(
+            String paymentExternalId, // 원본 결제 건 식별자
+            Long amount,              // 환불 요청 금액
+            String idempotencyKey
+    ) {}
+
+    // --- 출력(Result) ---
+    public record CardResult(
+            String paymentExternalId,
+            String transactionExternalId,
+            String cardNumber, // 마스킹 처리는 컨트롤러나 매퍼에서 결정
+            String cardType,
+            String status,
+            LocalDate expiryDate,
+            LocalDateTime createdAt
+    ) {}
+
+    public record CardPaymentResult(
+            String externalId,        // 거래 고유 식별자
+            String maskedCardNumber,
+            Long amount,
+            Long balanceAfter,        // 결제 후 잔액
+            String merchantName,      // 가맹점명 (추가 정보)
+            String status,
+            LocalDateTime occurredAt
+    ) {}
+
+    public record RefundResult(
+            String refundTransactionExternalId, // 이번 환불 거래의 식별자
+            String originalPaymentExternalId,   // 원본 결제 식별자
+            Long refundAmount,                  // 이번에 환불된 금액
+            Long totalRefundedAmount,           // 지금까지 환불된 총 누적 금액
+            Long remainingAmount,               // 남은 결제 금액 (취소 가능 잔액)
+            LocalDateTime occurredAt
+    ) {}
+}

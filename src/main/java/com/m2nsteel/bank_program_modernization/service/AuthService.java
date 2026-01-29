@@ -5,9 +5,8 @@ import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
 import com.m2nsteel.bank_program_modernization.core.security.TokenProvider;
 import com.m2nsteel.bank_program_modernization.domain.Member;
 import com.m2nsteel.bank_program_modernization.domain.constant.MemberStatus;
-import com.m2nsteel.bank_program_modernization.dto.request.LoginRequest;
-import com.m2nsteel.bank_program_modernization.dto.response.TokenResponse;
 import com.m2nsteel.bank_program_modernization.repository.MemberRepository;
+import com.m2nsteel.bank_program_modernization.usecase.AuthUsecase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -25,16 +24,16 @@ public class AuthService {
     로그인 처리 및 토큰 발급
      */
     @Transactional
-    public TokenResponse login(LoginRequest request) {
+    public AuthUsecase.TokenResult login(AuthUsecase.LoginCommand command) {
         // 1. 사용자 존재 여부 및 비밀번호 확인
-        Member member = memberRepository.findByLoginId(request.loginId())
+        Member member = memberRepository.findByLoginId(command.loginId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
-        if (!passwordEncoder.matches(request.password(), member.getPassword())) {
+        if (!passwordEncoder.matches(command.password(), member.getPassword())) {
             throw new BusinessException(ErrorCode.INVALID_PASSWORD);
         }
 
-        // 2. 계좌 상태 확인 (정상 상태만 로그인 가능)
+        // 2. 상태 확인 (정상 상태만 로그인 가능)
         if (member.getStatus() != MemberStatus.ACTIVE) {
             throw new BusinessException(ErrorCode.MEMBER_NOT_ACTIVE);
         }
@@ -43,7 +42,7 @@ public class AuthService {
         String accessToken = tokenProvider.createAccessToken(member.getLoginId(), member.getRole().name());
         String refreshToken = tokenProvider.createRefreshToken(member.getLoginId());
 
-        return new TokenResponse(accessToken, refreshToken);
+        return new AuthUsecase.TokenResult(accessToken, refreshToken);
     }
 
     /*

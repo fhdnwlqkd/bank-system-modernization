@@ -72,7 +72,7 @@ class MemberServiceTest {
             // 실제 계좌가 생성되었는지 확인 (Member ID로 조회)
             var member = memberRepository.findByExternalId(result.externalId()).orElseThrow();
             var accountExists = accountRepository.existsByMember(member);
-            assertThat(accountExists).isPresent();
+            assertThat(accountExists).isTrue();
         }
 
         @Test

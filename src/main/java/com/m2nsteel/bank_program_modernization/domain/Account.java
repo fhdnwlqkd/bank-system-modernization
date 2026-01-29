@@ -62,9 +62,9 @@ public class Account extends BaseEntity {
         this.status = AccountStatus.CLOSED;
     }
 
-    public static Account create(String accountPassword, Member member) {
+    public static Account create(String accountNumber, String accountPassword, Member member) {
         return Account.builder()
-                .accountNumber("110-" + ThreadLocalRandom.current().nextInt(100, 999) + "-" + System.currentTimeMillis() % 1000000)
+                .accountNumber(accountNumber)
                 .accountPassword(accountPassword)
                 .member(member)
                 .balance(0L)

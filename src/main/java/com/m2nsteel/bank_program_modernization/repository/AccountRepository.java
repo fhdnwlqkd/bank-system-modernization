@@ -16,5 +16,7 @@ public interface AccountRepository extends JpaRepository<Account, Long> {
             "WHERE m.businessNumber = :businessNumber " +
             "AND a.status = ACTIVE")
     Optional<Account> findByBusinessNumber(@Param("businessNumber") String businessNumber);
-    Optional<Account> existsByMember(Member member);
+    boolean existsByMember(Member member);
+    @Query(value = "SELECT nextval('account_num_seq')", nativeQuery = true)
+    Long getNextAccountSequence();
 }

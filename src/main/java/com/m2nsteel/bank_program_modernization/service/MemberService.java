@@ -2,6 +2,7 @@ package com.m2nsteel.bank_program_modernization.service;
 
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
+import com.m2nsteel.bank_program_modernization.core.generator.AccountNumberGenerator;
 import com.m2nsteel.bank_program_modernization.domain.Account;
 import com.m2nsteel.bank_program_modernization.domain.Admin;
 import com.m2nsteel.bank_program_modernization.domain.Member;
@@ -32,6 +33,7 @@ public class MemberService implements UserDetailsService {
     private final AccountRepository accountRepository;
     private final MemberMapper memberMapper;
     private final PasswordEncoder passwordEncoder;
+    private final AccountNumberGenerator generator;
 
     /**
      * 1. 일반 회원 가입 (Member)
@@ -169,8 +171,12 @@ public class MemberService implements UserDetailsService {
     // --- 헬퍼 메서드 ---
 
     private Member findMemberOrThrow(String externalId) {
-        return memberRepository.findByExternalId(externalId)
+        Member member = memberRepository.findByExternalId(externalId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        if (!member.isActive()) {
+            throw new BusinessException(ErrorCode.MEMBER_NOT_ACTIVE);
+        }
+        return member;
     }
 
     private void validateDuplicateLoginId(String loginId) {
@@ -181,6 +187,7 @@ public class MemberService implements UserDetailsService {
 
     private void createMerchantAccount(Merchant merchant) {
         Account account = Account.create(
+                generator.generate(),
                 merchant.getPassword(),
                 merchant
         );

@@ -44,6 +44,10 @@ public class Member extends BaseEntity {
         this.status = MemberStatus.WITHDRAWN;
     }
 
+    public boolean isActive() {
+        return this.status == MemberStatus.ACTIVE;
+    }
+
     public static Member create(String loginId, String password, String name, String contact) {
         return Member.builder()
                 .loginId(loginId)

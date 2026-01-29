@@ -9,9 +9,7 @@ public class AccountUsecase {
 
     public record AccountCreateCommand(
             String memberExternalId, // 회원 식별자
-            String branchCode,       // 지점 코드
-            String accountPassword,
-            String idempotencyKey    // 멱등성 키
+            String accountPassword
     ) {}
 
     public record AccountResult(

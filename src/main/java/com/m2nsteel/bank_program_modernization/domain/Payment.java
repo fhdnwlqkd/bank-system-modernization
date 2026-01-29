@@ -48,6 +48,10 @@ public class Payment extends BaseEntity {
                 ? PaymentStatus.REFUNDED : PaymentStatus.PARTIAL_REFUNDED;
     }
 
+    public Long getRefundableAmount() {
+        return this.amount - this.refundedAmount;
+    }
+
     public static Payment create(Card card, Account merchantAccount, Transaction transaction, Long amount, String idempotencyKey) {
         return Payment.builder()
                 .card(card)

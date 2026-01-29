@@ -36,8 +36,7 @@ public class CardUsecase {
 
     // --- 출력(Result) ---
     public record CardResult(
-            String paymentExternalId,
-            String transactionExternalId,
+            String externalId,
             String cardNumber, // 마스킹 처리는 컨트롤러나 매퍼에서 결정
             String cardType,
             String status,
@@ -46,11 +45,12 @@ public class CardUsecase {
     ) {}
 
     public record CardPaymentResult(
-            String externalId,        // 거래 고유 식별자
+            String paymentExternalId,
+            String transactionExternalId,
             String maskedCardNumber,
             Long amount,
-            Long balanceAfter,        // 결제 후 잔액
-            String merchantName,      // 가맹점명 (추가 정보)
+            Long balanceAfter,
+            String merchantName,
             String status,
             LocalDateTime occurredAt
     ) {}

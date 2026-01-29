@@ -11,5 +11,4 @@ public interface CardRepository extends JpaRepository<Card, Long> {
     Long getNextCardSequence();
     Optional<Card> findByExternalId(String externalId);
     Optional<Card> findByCardNumber(String cardNumber);
-    Optional<Card> findByCardNum(String cardNum);
 }

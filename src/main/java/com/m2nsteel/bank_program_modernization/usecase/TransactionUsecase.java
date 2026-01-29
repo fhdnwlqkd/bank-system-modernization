@@ -20,7 +20,6 @@ public class TransactionUsecase {
     // --- 출력(Result) ---
     public record GeneralResult(
             String externalId,
-            Long id,
             String accountNumber,
             String type,
             Long amount,
@@ -31,7 +30,6 @@ public class TransactionUsecase {
 
     public record TransferResult(
             String externalId,
-            Long id,
             String fromAccountNumber,
             String toAccountNumber,
             Long amount,

@@ -16,8 +16,9 @@ public interface CardMapper {
     @Mapping(target = "transactionExternalId", source = "transaction.externalId")
     @Mapping(target = "maskedCardNumber", expression = "java(maskCardNumber(card.getCardNumber()))")
     @Mapping(target = "balanceAfter", source = "currentBalance")
-    @Mapping(target = "merchantName", source = "payment.merchant.name")
+    @Mapping(target = "merchantName", source = "payment.merchantAccount.member.name")
     @Mapping(target = "status", source = "transaction.status")
+    @Mapping(target = "amount", source = "payment.amount")
     CardUsecase.CardPaymentResult toPaymentResult(
             Payment payment,
             Transaction transaction,
@@ -30,7 +31,7 @@ public interface CardMapper {
     @Mapping(target = "refundAmount", source = "refundTransaction.amount")
     @Mapping(target = "totalRefundedAmount", source = "payment.refundedAmount")
     @Mapping(target = "remainingAmount", expression = "java(payment.getRefundableAmount())")
-    @Mapping(target = "occurredAt", source = "refundTransaction.occurredAt")
+    @Mapping(target = "occurredAt", source = "refundTransaction.createdAt")
     CardUsecase.RefundResult toRefundResult(Payment payment, Transaction refundTransaction);
 
     default String maskCardNumber(String cardNumber) {

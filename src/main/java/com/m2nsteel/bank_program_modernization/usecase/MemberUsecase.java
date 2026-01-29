@@ -79,6 +79,7 @@ public class MemberUsecase {
             String loginId,
             String name,
             String contact,
+            MemberRole role,
             String businessNumber,
             String shopName,
             String category,

@@ -10,14 +10,16 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface TransactionMapper {
 
-    @Mapping(target = "externalId", source = "transaction.externalId")
+    @Mapping(target = "TxExternalId", source = "transaction.externalId")
     @Mapping(target = "accountNumber", source = "item.account.accountNumber")
     @Mapping(target = "balanceAfter", source = "item.balanceAfter")
+    @Mapping(target = "createdAt", source = "transaction.createdAt")
     TransactionUsecase.GeneralResult toResult(Transaction transaction, TransactionItem item);
 
-    @Mapping(target = "externalId", source = "transaction.externalId")
+    @Mapping(target = "TxExternalId", source = "transaction.externalId")
     @Mapping(target = "fromAccountNumber", source = "fromItem.account.accountNumber")
     @Mapping(target = "toAccountNumber", source = "toItem.account.accountNumber")
     @Mapping(target = "balanceAfter", source = "fromItem.balanceAfter")
+    @Mapping(target = "createdAt", source = "transaction.createdAt")
     TransactionUsecase.TransferResult toTransferResult(Transaction transaction, TransactionItem fromItem, TransactionItem toItem);
 }

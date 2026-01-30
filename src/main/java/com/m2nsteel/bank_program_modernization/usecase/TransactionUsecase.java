@@ -19,22 +19,22 @@ public class TransactionUsecase {
 
     // --- 출력(Result) ---
     public record GeneralResult(
-            String externalId,
+            String TxExternalId,
             String accountNumber,
             String type,
             Long amount,
             Long balanceAfter,
             String status,
-            LocalDateTime occurredAt
+            LocalDateTime createdAt
     ) {}
 
     public record TransferResult(
-            String externalId,
+            String TxExternalId,
             String fromAccountNumber,
             String toAccountNumber,
             Long amount,
             Long balanceAfter,
             String status,
-            LocalDateTime occurredAt
+            LocalDateTime createdAt
     ) {}
 }

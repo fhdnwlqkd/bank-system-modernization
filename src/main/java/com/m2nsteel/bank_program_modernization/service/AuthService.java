@@ -39,7 +39,8 @@ public class AuthService {
         }
 
         // 3. 토큰 생성
-        String accessToken = tokenProvider.createAccessToken(member.getLoginId(), member.getRole().name());
+        String accessToken = tokenProvider.createAccessToken(
+                member.getLoginId(), member.getExternalId(), member.getRole().name());
         String refreshToken = tokenProvider.createRefreshToken(member.getLoginId());
 
         return new AuthUsecase.TokenResult(accessToken, refreshToken);
@@ -48,8 +49,8 @@ public class AuthService {
     /*
     본인 인증 확인
      */
-    public void verifyMember(Long memberId, String password) {
-        Member member = memberRepository.findById(memberId)
+    public void verifyMember(String externalId, String password) {
+        Member member = memberRepository.findByExternalId(externalId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
         if (!passwordEncoder.matches(password, member.getPassword())) {

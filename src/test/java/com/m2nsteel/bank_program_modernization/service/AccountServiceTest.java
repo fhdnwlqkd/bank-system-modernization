@@ -20,7 +20,6 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 @SpringBootTest
 @Transactional
-@ActiveProfiles("test") // test 설정 파일을 읽도록 지정
 class AccountServiceTest {
 
     @Autowired

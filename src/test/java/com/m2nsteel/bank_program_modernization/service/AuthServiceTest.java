@@ -2,6 +2,7 @@ package com.m2nsteel.bank_program_modernization.service;
 
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
+import com.m2nsteel.bank_program_modernization.domain.Member;
 import com.m2nsteel.bank_program_modernization.repository.MemberRepository;
 import com.m2nsteel.bank_program_modernization.usecase.AuthUsecase;
 import com.m2nsteel.bank_program_modernization.usecase.MemberUsecase;
@@ -29,7 +30,6 @@ class AuthServiceTest {
         var command = new MemberUsecase.MemberSignUpCommand(
                 LOGIN_ID, PASSWORD, "홍길동", "010-1111-2222"
         );
-
         var result = memberService.signUp(command);
     }
 
@@ -75,9 +75,10 @@ class AuthServiceTest {
     @DisplayName("본인 확인 성공")
     void verifyMember_success() {
         // Given
-        Long memberId = memberRepository.findByLoginId(LOGIN_ID).get().getId();
+        Member member = memberRepository.findByLoginId(LOGIN_ID)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
-        // When & Then (예외가 발생하지 않아야 함)
-        authService.verifyMember(memberId, PASSWORD);
+        // When & Then
+        authService.verifyMember(member.getExternalId(), PASSWORD);
     }
 }

@@ -2,6 +2,7 @@ package com.m2nsteel.bank_program_modernization.domain.constant;
 
 public enum CardStatus {
     ACTIVE,
-    BLOCKED,
-    EXPIRED
+    INACTIVE,
+    EXPIRED,
+    LOST,
 }

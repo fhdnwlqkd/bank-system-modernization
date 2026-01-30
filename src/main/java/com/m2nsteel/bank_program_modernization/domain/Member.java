@@ -2,37 +2,29 @@ package com.m2nsteel.bank_program_modernization.domain;
 
 import com.m2nsteel.bank_program_modernization.domain.constant.MemberStatus;
 import com.m2nsteel.bank_program_modernization.domain.constant.MemberRole;
+import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
-import lombok.AccessLevel;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 import lombok.experimental.SuperBuilder;
 
 @Entity
 @Getter
 @SuperBuilder
-@Inheritance(strategy = InheritanceType.JOINED)
-@DiscriminatorColumn(name="role")
-@Table(name = "members")
-public class Member {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+@DiscriminatorColumn(name = "role")
+@Table(name = "members", indexes = {
+        @Index(name = "idx_member_login_id", columnList = "loginId")
+})
+public class Member extends BaseEntity {
     private String name;
     private String contact;
-
-    @Column(unique = true, nullable = false)
-    private String memberNumber;
 
     @Column(unique = true, nullable = false)
     private String loginId;
 
     @Column(nullable = false)
     private String password;
-
-    @Column(nullable = false)
-    private Long branchId;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "role", insertable = false, updatable = false)
@@ -41,4 +33,29 @@ public class Member {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private MemberStatus status;
+
+    public void updateInfo(String name, String contact, @Nullable String encodedPassword) {
+        if (name != null) this.name = name;
+        if (contact != null) this.contact = contact;
+        if (encodedPassword != null) this.password = encodedPassword;
+    }
+
+    public void withdraw() {
+        this.status = MemberStatus.WITHDRAWN;
+    }
+
+    public boolean isActive() {
+        return this.status == MemberStatus.ACTIVE;
+    }
+
+    public static Member create(String loginId, String password, String name, String contact) {
+        return Member.builder()
+                .loginId(loginId)
+                .password(password)
+                .name(name)
+                .contact(contact)
+                .role(MemberRole.USER)
+                .status(MemberStatus.ACTIVE)
+                .build();
+    }
 }

@@ -2,11 +2,14 @@ package com.m2nsteel.bank_program_modernization.service;
 
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
-import com.m2nsteel.bank_program_modernization.domain.constant.CardType;
-import com.m2nsteel.bank_program_modernization.dto.request.AccountCreateRequest;
-import com.m2nsteel.bank_program_modernization.dto.request.CardCreateRequest;
-import com.m2nsteel.bank_program_modernization.dto.request.MemberSignUpRequest;
+import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
 import com.m2nsteel.bank_program_modernization.repository.CardRepository;
+import com.m2nsteel.bank_program_modernization.repository.PaymentRepository;
+import com.m2nsteel.bank_program_modernization.repository.RefundRepository;
+import com.m2nsteel.bank_program_modernization.usecase.AccountUsecase;
+import com.m2nsteel.bank_program_modernization.usecase.CardUsecase;
+import com.m2nsteel.bank_program_modernization.usecase.MemberUsecase;
+import com.m2nsteel.bank_program_modernization.usecase.TransactionUsecase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -14,89 +17,129 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 @SpringBootTest
 @Transactional
 class CardServiceTest {
 
-    @Autowired CardService cardService;
-    @Autowired MemberService memberService;
-    @Autowired AccountService accountService;
-    @Autowired BranchService branchService;
-    @Autowired CardRepository cardRepository;
+    @Autowired private CardService cardService;
+    @Autowired private MemberService memberService;
+    @Autowired private AccountService accountService;
+    @Autowired private TransactionService transactionService;
 
-    private Long memberId;
-    private String accountNumber;
+    @Autowired private CardRepository cardRepository;
+    @Autowired private AccountRepository accountRepository;
+    @Autowired private PaymentRepository paymentRepository;
+    @Autowired private RefundRepository refundRepository;
+
+    private String memberId;
+    private String merchantId;
+    private String userAccountNo;
+    private String merchantAccountNo;
+    private final String PASSWORD = "password123!";
+    private final String CARD_PASS = "1234";
 
     @BeforeEach
     void setUp() {
-        // 1. 지점 생성
-        var branchResponse = branchService.createBranch(
-                new com.m2nsteel.bank_program_modernization.dto.request.BranchCreateRequest(
-                        "Test Branch", "123 Test St", "555-0000"
-                )
+        // 1. Given: 일반 사용자 및 가맹점 가입
+        var user = memberService.signUp(new MemberUsecase.MemberSignUpCommand(
+                "user1", PASSWORD, "사용자", "010-1111-2222"));
+        var command = new MemberUsecase.MerchantSignUpCommand(
+                "merchant1", PASSWORD, "1234", "카페주인", "010-3333-4444",
+                "123-45-67890", "맛있는카페", "음식점"
         );
+        var merchant = memberService.merchantSignUp(command);
 
-        // 2. 테스트용 회원 가입
-        var memberResponse = memberService.signUp(new MemberSignUpRequest(
-                "tester", "pw123", "M123", branchResponse.branchCode()));
-        memberId = memberResponse.memberId();
+        // when
+        memberId = user.externalId();
+        merchantId = merchant.externalId();
 
-        // 3. 테스트용 계좌 생성
-        var accountResponse = accountService.createAccount(new AccountCreateRequest(
-                memberResponse.memberNumber(), branchResponse.branchCode(), "1234"
-        ));
-        accountNumber = accountResponse.accountNumber();
+        // 2. Given: 각각의 계좌 개설
+        var userAcc = accountService.createAccount(new AccountUsecase.AccountCreateCommand(
+                memberId, PASSWORD));
+
+        userAccountNo = userAcc.accountNumber();
+        merchantAccountNo = merchant.accountNumber();
+
+        // 3. Given: 사용자 계좌에 50,000원 입금 (결제 자금 확보)
+        transactionService.deposit(new TransactionUsecase.DepositCommand(
+                userAccountNo, 50000L, "idemp-setup-3"), memberId);
     }
 
     @Test
-    @DisplayName("카드 발급 성공 테스트")
-    void createCard_success() {
-        // Given
-        CardCreateRequest request = new CardCreateRequest(accountNumber, "1234", "CHECK");
+    @DisplayName("성공: 카드 발급")
+    void issue_Card_Success() {
+        var issueCmd = new CardUsecase.IssueCardCommand(userAccountNo, PASSWORD, CARD_PASS, "CHECK");
 
-        // When
-        var response = cardService.createCard(request);
+        var result = cardService.issueCard(issueCmd, memberId);
 
-        // Then
-        assertThat(response.accountNumber()).isEqualTo(accountNumber);
-        assertThat(response.cardType()).isEqualTo("CHECK");
-
-        // 마스킹 검증 (9410-****-****-XXXX 형태인지)
-        assertThat(response.maskedCardNumber()).contains("-****-****-");
-        assertThat(response.maskedCardNumber().length()).isEqualTo(19);
-
-        // DB 저장 확인
-        assertThat(cardRepository.findAll()).hasSize(1);
+        assertThat(result.externalId()).isNotEmpty();
+        assertThat(cardRepository.existsByExternalId(result.externalId())).isTrue();
     }
 
-//    @Test
-//    @DisplayName("카드 발급 실패: 본인 계좌가 아님")
-//    void createCard_fail_notOwner() {
-//        // Given: 다른 사용자의 ID (memberId + 999)
-//        Long wrongMemberId = memberId + 999L;
-//        CardCreateRequest request = new CardCreateRequest(accountNumber, "1234", "CHECK");
-//
-//        // When & Then
-//        BusinessException exception = assertThrows(BusinessException.class, () -> {
-//            cardService.createCard(request, wrongMemberId);
-//        });
-//
-//        // 에러 코드 확인 (미리 정의한 ErrorCode에 따라 다를 수 있음)
-//        assertThat(exception.getErrorCode()).isEqualTo(ErrorCode.NOT_ACCOUNT_OWNER);
-//    }
+    @Test
+    @DisplayName("성공: 카드 발급부터 결제 및 환불까지의 전체 흐름 검증")
+    void full_Card_Lifecycle_Test() {
+        // --- [Step 1: 카드 발급] ---
+        var issueCmd = new CardUsecase.IssueCardCommand(userAccountNo, PASSWORD, CARD_PASS, "CHECK");
+        var cardResult = cardService.issueCard(issueCmd, memberId);
+
+        assertThat(cardResult.externalId()).isNotEmpty();
+        assertThat(cardRepository.existsByExternalId(cardResult.externalId())).isTrue();
+
+        // --- [Step 2: 카드 결제] ---
+        String payKey = "pay-key-101";
+        var payCmd = new CardUsecase.CardPaymentCommand(
+                cardResult.externalId(), 10000L, CARD_PASS, "123-45-67890", payKey);
+
+        var payResult = cardService.pay(payCmd, memberId);
+
+        // Then: 결제 성공 확인
+        assertThat(payResult.isRepeated()).isFalse();
+        assertThat(payResult.amount()).isEqualTo(10000L);
+        assertThat(accountRepository.findByAccountNumber(userAccountNo).get().getBalance()).isEqualTo(40000L);
+
+        // Idempotency: 동일 키로 재결제 시도
+        var payRetryResult = cardService.pay(payCmd, memberId);
+        assertThat(payRetryResult.isRepeated()).isTrue();
+        assertThat(accountRepository.findByAccountNumber(userAccountNo).get().getBalance()).isEqualTo(40000L); // 잔액 불변
+
+        // --- [Step 3: 카드 환불 (부분 환불)] ---
+        String refundKey = "refund-key-201";
+        var refundCmd = new CardUsecase.RefundCommand(payResult.paymentExternalId(), 4000L, "단순 변심", refundKey);
+
+        var refundResult = cardService.refund(refundCmd);
+
+        // Then: 환불 성공 확인 (사용자 잔액 복구)
+        assertThat(refundResult.isRepeated()).isFalse();
+        assertThat(refundResult.refundAmount()).isEqualTo(4000L);
+        assertThat(accountRepository.findByAccountNumber(userAccountNo).get().getBalance()).isEqualTo(44000L); // 40,000 + 4,000
+
+        // Idempotency: 동일 키로 재환불 시도
+        var refundRetryResult = cardService.refund(refundCmd);
+        assertThat(refundRetryResult.isRepeated()).isTrue();
+        assertThat(accountRepository.findByAccountNumber(userAccountNo).get().getBalance()).isEqualTo(44000L); // 잔액 불변
+    }
 
     @Test
-    @DisplayName("카드 발급 실패: 존재하지 않는 계좌")
-    void createCard_fail_accountNotFound() {
-        // Given: 가짜 계좌 번호
-        CardCreateRequest request = new CardCreateRequest("999-999-999", "1234", "CHECK");
+    @DisplayName("성공: 카드 상태 변경 (분실 신고) 후 결제 시도 시 실패")
+    void card_Status_Update_And_Payment_Fail() {
+        // 1. Given: 카드 발급
+        var card = cardService.issueCard(new CardUsecase.IssueCardCommand(
+                userAccountNo, PASSWORD, CARD_PASS, "CHECK"), memberId);
 
-        // When & Then
-        assertThrows(BusinessException.class, () -> {
-            cardService.createCard(request);
-        });
+        // 2. When: 카드 분실 신고 (Service 사용)
+        cardService.updateStatus(new CardUsecase.UpdateCardStatusCommand(
+                card.externalId(), CARD_PASS, "LOST"), memberId);
+
+        // 3. Then: 결제 시도 시 CARD_NOT_ACTIVE 예외 발생
+        var payCmd = new CardUsecase.CardPaymentCommand(
+                card.externalId(), 1000L, CARD_PASS, "123-45-67890", "idemp-lost-1");
+
+        assertThatThrownBy(() -> cardService.pay(payCmd, memberId))
+                .isInstanceOf(BusinessException.class)
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CARD_NOT_ACTIVE);
     }
 }

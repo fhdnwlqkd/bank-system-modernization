@@ -1,7 +1,7 @@
 package com.m2nsteel.bank_program_modernization.domain.constant;
 
-public enum TransactionStatus {
-    PENDING,
+public enum PaymentStatus {
     SUCCESS,
-    FAILED
+    PARTIAL_REFUNDED,
+    REFUNDED
 }

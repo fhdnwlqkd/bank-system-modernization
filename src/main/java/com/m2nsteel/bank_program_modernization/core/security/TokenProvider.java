@@ -27,8 +27,9 @@ public class TokenProvider {
         return Keys.hmacShaKeyFor(keyBytes);
     }
 
-    public String createAccessToken(String loginId, String role) {
+    public String createAccessToken(String loginId, String externalId, String role) {
         Claims claims = Jwts.claims().setSubject(loginId);
+        claims.put("externalId", externalId);
         claims.put("role", role);
 
         Date now = new Date();
@@ -57,6 +58,15 @@ public class TokenProvider {
                 .parseClaimsJws(token)
                 .getBody()
                 .getSubject();
+    }
+
+    public String getExternalIdFromToken(String token) {
+        return Jwts.parserBuilder()
+                .setSigningKey(getSigningKey())
+                .build()
+                .parseClaimsJws(token)
+                .getBody()
+                .get("externalId", String.class);
     }
 
     public boolean validateToken(String token) {

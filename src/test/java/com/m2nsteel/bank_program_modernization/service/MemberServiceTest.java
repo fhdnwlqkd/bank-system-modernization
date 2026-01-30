@@ -1,105 +1,127 @@
 package com.m2nsteel.bank_program_modernization.service;
 
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
-import com.m2nsteel.bank_program_modernization.domain.Member;
-import com.m2nsteel.bank_program_modernization.domain.MerchantMember;
-import com.m2nsteel.bank_program_modernization.dto.request.BranchCreateRequest;
-import com.m2nsteel.bank_program_modernization.dto.request.MemberSignUpRequest;
-import com.m2nsteel.bank_program_modernization.dto.request.MerchantSignUpRequest;
-import com.m2nsteel.bank_program_modernization.dto.response.BranchResponse;
+import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
+import com.m2nsteel.bank_program_modernization.domain.constant.MemberStatus;
+import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
 import com.m2nsteel.bank_program_modernization.repository.MemberRepository;
-import org.junit.jupiter.api.BeforeEach;
+import com.m2nsteel.bank_program_modernization.usecase.MemberUsecase;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.transaction.annotation.Transactional;
 
-import static org.assertj.core.api.Assertions.*;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 @SpringBootTest
 @Transactional
 class MemberServiceTest {
-    @Autowired MemberService memberService;
-    @Autowired MemberRepository memberRepository;
-    @Autowired BranchService branchService;
-    private String branchCode;
 
-    @BeforeEach
-    void setUp() {
-        // 1. 지점 생성
-        BranchResponse branch = branchService.createBranch(
-                new BranchCreateRequest(
-                        "Test Branch",
-                        "123 Test St",
-                        "555-0000"
-                )
-        );
-        this.branchCode = branch.branchCode();
+    @Autowired
+    private MemberService memberService;
+
+    @Autowired
+    private MemberRepository memberRepository;
+
+    @Autowired
+    private AccountRepository accountRepository;
+
+    private static final String PASSWORD = "password123!";
+
+    @Nested
+    @DisplayName("회원 가입 검증")
+    class SignUpValidation {
+
+        @Test
+        @DisplayName("일반 회원 가입 성공")
+        void signUp_Member_Success() {
+            // given
+            var command = new MemberUsecase.MemberSignUpCommand(
+                    "tester1", PASSWORD, "홍길동", "010-1111-2222"
+            );
+
+            // when
+            var result = memberService.signUp(command);
+
+            // then
+            assertThat(result.loginId()).isEqualTo("tester1");
+            assertThat(result.externalId()).isNotNull();
+
+            // DB 실제 저장 여부 확인
+            assertThat(memberRepository.existsByLoginId("tester1")).isTrue();
+        }
+
+        @Test
+        @DisplayName("가맹점 가입 시 계좌 자동 생성")
+        void merchantSignUp_WithAccount_Success() {
+            // given
+            var command = new MemberUsecase.MerchantSignUpCommand(
+                    "merchant1", PASSWORD, "1234","카페주인", "010-3333-4444",
+                    "123-45-67890", "맛있는카페", "음식점"
+            );
+
+            // when
+            var result = memberService.merchantSignUp(command);
+
+            // then
+            assertThat(result.merchantName()).isEqualTo("맛있는카페");
+
+            // 실제 계좌가 생성되었는지 확인 (Member ID로 조회)
+            var member = memberRepository.findByExternalId(result.externalId()).orElseThrow();
+            var accountExists = accountRepository.existsByMember(member);
+            assertThat(accountExists).isTrue();
+        }
+
+        @Test
+        @DisplayName("중복 아이디 가입 시 비즈니스 예외 발생 확인")
+        void signUp_DuplicateId_ThrowsException() {
+            // given
+            var command1 = new MemberUsecase.MemberSignUpCommand("user1", PASSWORD, "홍길동", "010");
+            memberService.signUp(command1);
+
+            var command2 = new MemberUsecase.MemberSignUpCommand("user1", PASSWORD, "이순신", "010");
+
+            // when & then
+            assertThatThrownBy(() -> memberService.signUp(command2))
+                    .isInstanceOf(BusinessException.class)
+                    .hasFieldOrPropertyWithValue("errorCode", ErrorCode.DUPLICATE_LOGIN_ID);
+        }
     }
 
-    @Test
-    @DisplayName("회원가입 성공 테스트")
-    void signup_success() {
-        MemberSignUpRequest request = new MemberSignUpRequest(
-                "testuser",
-                "password123",
-                "John Doe",
-                branchCode
-        );
-        var response = memberService.signUp(request);
-        assertThat(response.loginId()).isEqualTo("testuser");
-        assertThat(memberRepository.existsByLoginId("testuser")).isTrue();
-    }
+    @Nested
+    @DisplayName("정보 수정 및 탈퇴")
+    class ManagementTest {
 
-    @Test
-    @DisplayName("가맹점 회원가입 성공 및 전용 필드 검증 테스트")
-    void merchant_signup_success() {
-        // 1. Given
-        MerchantSignUpRequest request = new MerchantSignUpRequest(
-                "merchantuser",
-                "merchantpass",
-                "맛있는 식당",
-                branchCode,
-                "123-45-67890", // 사업자 번호
-                "RESTAURANT"    // 카테고리
-        );
+        @Test
+        @DisplayName("정보 수정 성공")
+        void updateMyInfo_Success() {
+            // given
+            var signup = memberService.signUp(new MemberUsecase.MemberSignUpCommand("user2", PASSWORD, "이름", "010"));
+            var updateCommand = new MemberUsecase.MemberUpdateCommand(null, "새이름", "010-9999-9999");
 
-        // 2. When
-        var response = memberService.merchantSignUp(request);
+            // when
+            var result = memberService.updateMyInfo(signup.externalId(), updateCommand);
 
-        // 3. Then
-        assertThat(response.loginId()).isEqualTo("merchantuser");
-        assertThat(response.businessRegistrationNumber()).isEqualTo("123-45-67890");
+            // then
+            assertThat(result.name()).isEqualTo("새이름");
+            assertThat(result.contact()).isEqualTo("010-9999-9999");
+        }
 
-        // 4. DB 상세 검증
-        Member foundMember = memberRepository.findByLoginId("merchantuser")
-                .orElseThrow();
+        @Test
+        @DisplayName("회원 탈퇴 시 상태가 변경")
+        void withdraw_StatusChanges() {
+            // given
+            var signup = memberService.signUp(new MemberUsecase.MemberSignUpCommand("user3", PASSWORD, "이름", "010"));
 
-        assertThat(foundMember).isInstanceOf(MerchantMember.class); // 실제 클래스 타입 확인
+            // when
+            memberService.withdraw(signup.externalId());
 
-        MerchantMember merchant = (MerchantMember) foundMember;
-        assertThat(merchant.getBusinessRegistrationNumber()).isEqualTo("123-45-67890");
-        assertThat(merchant.getMerchantCategory()).isEqualTo("RESTAURANT");
-    }
-
-    @Test
-    @DisplayName("중복 아이디 가입 시 BusinessException 발생")
-    void signup_duplicate_fail() {
-        MemberSignUpRequest request1 = new MemberSignUpRequest(
-                "testuser",
-                "password123",
-                "John Doe",
-                branchCode
-        );
-        var response = memberService.signUp(request1);
-
-        MemberSignUpRequest request2 = new MemberSignUpRequest(
-                "testuser",
-                "pw123",
-                "중복이",
-                branchCode);
-        assertThatThrownBy(() -> memberService.signUp(request2))
-                .isInstanceOf(BusinessException.class);
+            // then
+            var member = memberRepository.findByExternalId(signup.externalId()).orElseThrow();
+            assertThat(member.getStatus()).isEqualTo(MemberStatus.WITHDRAWN);
+        }
     }
 }

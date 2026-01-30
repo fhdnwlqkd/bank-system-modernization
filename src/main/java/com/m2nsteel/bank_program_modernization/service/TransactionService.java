@@ -31,65 +31,88 @@ public class TransactionService {
      * 입금 처리 (Deposit)
      */
     @Transactional
-    public TransactionUsecase.GeneralResult deposit(TransactionUsecase.DepositCommand command, String loginId) {
-        // 1. 검증 및 조회
-        Account account = findActiveAccountWithOwnership(command.accountNumber(), loginId);
+    public TransactionUsecase.GeneralResult deposit(TransactionUsecase.DepositCommand command, String memberExternalId) {
+        // 1. 멱등성 검증: 이미 처리된 요청이면 기존 결과 반환
+        return transactionRepository.findByIdempotencyKey(command.idempotencyKey())
+                .map(tx -> transactionMapper.toResult(tx, tx.getItems().getFirst(), true))
+                .orElseGet(() -> {
+                    // 2. 검증 및 조회 (나의 계좌인지 확인)
+                    Account account = findActiveAccountWithOwnership(command.accountNumber(), memberExternalId);
 
-        // 2. 비즈니스 로직 수행
-        account.deposit(command.amount());
+                    // 3. 비즈니스 로직 수행
+                    account.deposit(command.amount());
 
-        // 3. 기록 생성
-        Transaction transaction = Transaction.createDeposit(command.amount(), command.idempotencyKey());
-        TransactionItem item = TransactionItem.createDepositItem(transaction, account, command.amount(), 1);
+                    // 4. 기록 저장
+                    Transaction transaction = Transaction.createDeposit(command.amount(), command.idempotencyKey());
+                    TransactionItem item = TransactionItem.createDepositItem(transaction, account, command.amount(), 1);
 
-        transactionRepository.save(transaction);
-        return transactionMapper.toResult(transaction, item);
+                    transactionRepository.save(transaction);
+                    return transactionMapper.toResult(transaction, item, false);
+                });
     }
 
     /**
      * 출금 처리 (Withdraw)
      */
     @Transactional
-    public TransactionUsecase.GeneralResult withdraw(TransactionUsecase.WithdrawCommand command, String loginId) {
-        Account account = findActiveAccountWithOwnership(command.accountNumber(), loginId);
-        verifyAccountPassword(command.accountPassword(), account.getAccountPassword());
+    public TransactionUsecase.GeneralResult withdraw(TransactionUsecase.WithdrawCommand command, String memberExternalId) {
+        // 1. 멱등성 검증
+        return transactionRepository.findByIdempotencyKey(command.idempotencyKey())
+                .map(tx -> transactionMapper.toResult(tx, tx.getItems().getFirst(), true))
+                .orElseGet(() -> {
+                    // 2. 검증 및 조회
+                    Account account = findActiveAccountWithOwnership(command.accountNumber(), memberExternalId);
+                    verifyAccountPassword(command.accountPassword(), account.getAccountPassword());
 
-        // 비즈니스 로직 (잔액 부족 시 Exception 발생 -> 자동 롤백)
-        account.withdraw(command.amount());
+                    // 3. 비즈니스 로직 (잔액 부족 시 엔티티 내부에서 Exception 발생)
+                    account.withdraw(command.amount());
 
-        Transaction transaction = Transaction.createWithdrawal(command.amount(), command.idempotencyKey());
-        TransactionItem item = TransactionItem.createWithdrawalItem(transaction, account, command.amount(), 1);
+                    // 4. 기록 저장
+                    Transaction transaction = Transaction.createWithdrawal(command.amount(), command.idempotencyKey());
+                    TransactionItem item = TransactionItem.createWithdrawalItem(transaction, account, command.amount(), 1);
 
-        transactionRepository.save(transaction);
-        return transactionMapper.toResult(transaction, item);
+                    transactionRepository.save(transaction);
+                    return transactionMapper.toResult(transaction, item, false);
+                });
     }
 
     /**
      * 이체 처리 (Transfer)
      */
     @Transactional
-    public TransactionUsecase.TransferResult transfer(TransactionUsecase.TransferCommand command, String loginId) {
-        Account fromAccount = findActiveAccountWithOwnership(command.fromAccountNumber(), loginId);
-        Account toAccount = findActiveAccount(command.toAccountNumber());
-        verifyAccountPassword(command.accountPassword(), fromAccount.getAccountPassword());
+    public TransactionUsecase.TransferResult transfer(TransactionUsecase.TransferCommand command, String fromMemberExternalId) {
+        // 1. 멱등성 검증
+        return transactionRepository.findByIdempotencyKey(command.idempotencyKey())
+                .map(tx -> {
+                    // 0번이 출금(From), 1번이 입금(To).
+                    TransactionItem fromItem = tx.getItems().getFirst();
+                    TransactionItem toItem = tx.getItems().getLast();
+                    return transactionMapper.toTransferResult(tx, fromItem, toItem, true);
+                })
+                .orElseGet(() -> {
+                    // 2. 검증 및 조회 (출금 계좌 소유권 확인 & 입금 계좌 활성 확인)
+                    Account fromAccount = findActiveAccountWithOwnership(command.fromAccountNumber(), fromMemberExternalId);
+                    Account toAccount = findActiveAccount(command.toAccountNumber());
+                    verifyAccountPassword(command.accountPassword(), fromAccount.getAccountPassword());
 
-        // 양측 계좌 잔액 업데이트
-        fromAccount.withdraw(command.amount());
-        toAccount.deposit(command.amount());
+                    // 3. 양측 계좌 잔액 업데이트
+                    fromAccount.withdraw(command.amount());
+                    toAccount.deposit(command.amount());
 
-        Transaction transaction = Transaction.createTransfer(command.amount(), command.idempotencyKey());
-        TransactionItem withdrawItem = TransactionItem.createWithdrawalItem(transaction, fromAccount, command.amount(), 1);
-        TransactionItem depositItem = TransactionItem.createDepositItem(transaction, toAccount, command.amount(), 2);
+                    // 4. 기록 저장
+                    Transaction transaction = Transaction.createTransfer(command.amount(), command.idempotencyKey());
+                    TransactionItem withdrawItem = TransactionItem.createWithdrawalItem(transaction, fromAccount, command.amount(), 1);
+                    TransactionItem depositItem = TransactionItem.createDepositItem(transaction, toAccount, command.amount(), 2);
 
-        transactionRepository.save(transaction);
-        return transactionMapper.toTransferResult(transaction, withdrawItem, depositItem);
+                    transactionRepository.save(transaction);
+                    return transactionMapper.toTransferResult(transaction, withdrawItem, depositItem, false);
+                });
     }
 
     // --- Private Helpers ---
-
-    private Account findActiveAccountWithOwnership(String accountNumber, String loginId) {
+    private Account findActiveAccountWithOwnership(String accountNumber, String externalId) {
         Account account = findActiveAccount(accountNumber);
-        if (!account.getMember().getLoginId().equals(loginId)) {
+        if (!account.getMember().getExternalId().equals(externalId)) {
             throw new BusinessException(ErrorCode.NOT_ACCOUNT_OWNER);
         }
         return account;

@@ -42,14 +42,14 @@ public class MemberUsecase {
             String name,
             String contact,
             String businessNumber,
-            String shopName,
+            String merchantName,
             String category
     ) {}
     public record MerchantUpdateCommand(
             @Nullable String password,
             @Nullable String name,
             @Nullable String contact,
-            @Nullable String shopName,
+            @Nullable String merchantName,
             @Nullable String category
     ) {}
 
@@ -81,7 +81,7 @@ public class MemberUsecase {
             String contact,
             MemberRole role,
             String businessNumber,
-            String shopName,
+            String merchantName,
             String category,
             MemberStatus status,
             LocalDateTime createdAt

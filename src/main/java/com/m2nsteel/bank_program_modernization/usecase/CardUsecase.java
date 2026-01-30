@@ -11,36 +11,39 @@ public class CardUsecase {
     // --- 입력(Command) ---
     public record IssueCardCommand(
             String accountNumber,
-            String cardType, // CHECK, CREDIT 등
-            String idempotencyKey
+            String accountPassword,
+            String cardPassword,
+            String cardType // CHECK, CREDIT 등
     ) {}
 
     public record UpdateCardStatusCommand(
-            String externalId,
-            String status // ACTIVE, BLOCKED, TERMINATED
+            String cardExternalId,
+            String password,
+            String status
     ) {}
 
     public record CardPaymentCommand(
-            String cardNumber,
+            String cardExternalId,
             Long amount,
-            String cardPassword,
-            String businessRegistrationNumber, // 사업자 등록 번호(BRN)
+            String password,
+            String businessNumber, // 사업자 등록 번호(BRN)
             String idempotencyKey
     ) {}
 
     public record RefundCommand(
             String paymentExternalId, // 원본 결제 건 식별자
             Long amount,              // 환불 요청 금액
+            String reason,
             String idempotencyKey
     ) {}
 
     // --- 출력(Result) ---
     public record CardResult(
             String externalId,
-            String cardNumber, // 마스킹 처리는 컨트롤러나 매퍼에서 결정
+            String cardNumber,
             String cardType,
             String status,
-            LocalDate expiryDate,
+            LocalDate expiredAt,
             LocalDateTime createdAt
     ) {}
 
@@ -52,15 +55,21 @@ public class CardUsecase {
             Long balanceAfter,
             String merchantName,
             String status,
-            LocalDateTime occurredAt
+            boolean isRepeated,
+            LocalDateTime createdAt
     ) {}
 
     public record RefundResult(
-            String refundTransactionExternalId, // 이번 환불 거래의 식별자
+            String refundExternalId,          // 이번 환불 건의 식별자
+            String refundTxExternalId, // 이번 환불 거래의 식별자
             String originalPaymentExternalId,   // 원본 결제 식별자
+            Long originalAmount,                // 원본 결제 금액
             Long refundAmount,                  // 이번에 환불된 금액
             Long totalRefundedAmount,           // 지금까지 환불된 총 누적 금액
             Long remainingAmount,               // 남은 결제 금액 (취소 가능 잔액)
-            LocalDateTime occurredAt
+            String reason,
+            String status,
+            boolean isRepeated,
+            LocalDateTime createdAt
     ) {}
 }

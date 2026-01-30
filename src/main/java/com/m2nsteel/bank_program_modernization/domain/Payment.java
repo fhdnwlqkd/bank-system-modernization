@@ -14,12 +14,12 @@ import lombok.experimental.SuperBuilder;
 @SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Payment extends BaseEntity {
-    @Column(nullable = false, updatable = false, unique = true)
-    private String idempotencyKey;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "card_id", nullable = false)
     private Card card;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    private Merchant merchant;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "merchant_account_id", nullable = false)
@@ -29,7 +29,7 @@ public class Payment extends BaseEntity {
     private Long amount;      // 최초 결제 금액
 
     @Column(nullable = false)
-    private Long refundedAmount;   // 현재까지 환불된 누적 금액
+    private Long totalRefundedAmount;   // 현재까지 환불된 누적 금액
 
     @Enumerated(EnumType.STRING)
     private PaymentStatus status;  // SUCCESS, PARTIAL_REFUNDED, REFUNDED
@@ -38,27 +38,31 @@ public class Payment extends BaseEntity {
     @JoinColumn(name = "transaction_id")
     private Transaction transaction;
 
+    @Column(nullable = false, updatable = false, unique = true)
+    private String idempotencyKey;
+
     // --- 비즈니스 로직 ---
     public void refund(Long amount) {
-        if (this.refundedAmount + amount > this.amount) {
+        if (this.totalRefundedAmount + amount > this.amount) {
             throw new BusinessException(ErrorCode.EXCEED_REFUND_AMOUNT);
         }
-        this.refundedAmount += amount;
-        this.status = (this.refundedAmount.equals(this.amount))
+        this.totalRefundedAmount += amount;
+        this.status = (this.totalRefundedAmount.equals(this.amount))
                 ? PaymentStatus.REFUNDED : PaymentStatus.PARTIAL_REFUNDED;
     }
 
     public Long getRefundableAmount() {
-        return this.amount - this.refundedAmount;
+        return this.amount - this.totalRefundedAmount;
     }
 
-    public static Payment create(Card card, Account merchantAccount, Transaction transaction, Long amount, String idempotencyKey) {
+    public static Payment create(Card card, Merchant merchant, Account merchantAccount, Transaction transaction, Long amount, String idempotencyKey) {
         return Payment.builder()
                 .card(card)
+                .merchant(merchant)
                 .merchantAccount(merchantAccount)
                 .transaction(transaction)
                 .amount(amount)
-                .refundedAmount(0L)
+                .totalRefundedAmount(0L)
                 .idempotencyKey(idempotencyKey)
                 .build();
     }

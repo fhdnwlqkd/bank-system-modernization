@@ -33,26 +33,17 @@ public class Transaction extends BaseEntity {
 
     private String failReason;
 
-    // 중복 요청 방지
-    @Column(nullable = false, updatable = false, unique = true)
-    private String idempotencyKey;
-
     @Builder.Default
     @OneToMany(mappedBy = "transaction", cascade = CascadeType.ALL)
     private List<TransactionItem> items = new ArrayList<>();
 
+    // 중복 요청 방지
+    @Column(nullable = false, updatable = false, unique = true)
+    private String idempotencyKey;
+
     // 아이템 추가 및 연관관계 편의 메서드
     public void addItem(TransactionItem item) {
         this.items.add(item);
-    }
-
-    public void complete() {
-        this.status = TransactionStatus.SUCCESS;
-    }
-
-    public void fail(String reason) {
-        this.status = TransactionStatus.FAILED;
-        this.failReason = reason;
     }
 
     public static Transaction createDeposit(Long amount, String idempotencyKey) {

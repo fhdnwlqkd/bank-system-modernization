@@ -21,11 +21,11 @@ public class Merchant extends Member {
     @Column(unique = true)
     private String businessNumber;
 
-    private String shopName;
+    private String merchantName;
     private String category;
 
-    public void updateMerchant(String shopName, String category) {
-        if (shopName != null) this.shopName = shopName;
+    public void updateMerchant(String merchantName, String category) {
+        if (merchantName != null) this.merchantName = merchantName;
         if (category != null) this.category = category;
     }
 
@@ -35,7 +35,7 @@ public class Merchant extends Member {
             String name,
             String contact,
             String businessNumber,
-            String shopName,
+            String merchantName,
             String category
     ) {
         return Merchant.builder()
@@ -44,7 +44,7 @@ public class Merchant extends Member {
                 .name(name)
                 .contact(contact)
                 .businessNumber(businessNumber)
-                .shopName(shopName)
+                .merchantName(merchantName)
                 .category(category)
                 .role(MemberRole.MERCHANT)
                 .status(MemberStatus.ACTIVE)

@@ -2,13 +2,12 @@ package com.m2nsteel.bank_program_modernization.service;
 
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
+import com.m2nsteel.bank_program_modernization.core.generator.CardNumberGenerator;
 import com.m2nsteel.bank_program_modernization.domain.*;
+import com.m2nsteel.bank_program_modernization.domain.constant.AccountStatus;
 import com.m2nsteel.bank_program_modernization.domain.constant.CardStatus;
 import com.m2nsteel.bank_program_modernization.domain.constant.CardType;
-import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
-import com.m2nsteel.bank_program_modernization.repository.CardRepository;
-import com.m2nsteel.bank_program_modernization.repository.PaymentRepository;
-import com.m2nsteel.bank_program_modernization.repository.TransactionRepository;
+import com.m2nsteel.bank_program_modernization.repository.*;
 import com.m2nsteel.bank_program_modernization.service.mapper.CardMapper;
 import com.m2nsteel.bank_program_modernization.usecase.CardUsecase;
 import lombok.RequiredArgsConstructor;
@@ -28,32 +27,33 @@ public class CardService {
 
     private final CardRepository cardRepository;
     private final AccountRepository accountRepository;
+    private final MerchantRepository merchantRepository;
     private final TransactionRepository transactionRepository;
     private final PaymentRepository paymentRepository;
+    private final RefundRepository refundRepository;
     private final CardMapper cardMapper;
     private final PasswordEncoder passwordEncoder;
+    private final CardNumberGenerator generator;
 
     /**
      * 카드 신규 발급
      */
     @Transactional
-    public CardUsecase.CardResult issueCard(CardUsecase.IssueCardCommand command, String loginId) {
+    public CardUsecase.CardResult issueCard(CardUsecase.IssueCardCommand command, String memberExternalId) {
         // 1. 계좌 존재 여부 및 소유권 확인
-        Account account = accountRepository.findByAccountNumber(command.accountNumber())
-                .filter(a -> a.getMember().getLoginId().equals(loginId))
-                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
+        Account account = findActiveAccountWithOwnership(command.accountNumber(), memberExternalId);
+        verifyAccountPassword(command.accountPassword(), account.getAccountPassword());
 
         // 2. 카드 번호 및 유효기간 생성
-        // 지금은 체크카드만 발급한다고 가정
-        String cardNumber = cardNumberGenerator(CardType.CHECK);
-        LocalDate expiryDate = LocalDate.now().plusYears(5); // 보통 5년
+        String cardNumber = generator.generate();
+        LocalDate expiredAt = LocalDate.now().plusYears(5); // 보통 5년
 
-        // 3. 엔티티 생성 (정적 팩토리 메서드)
+        // 3. 엔티티 생성
         Card card = Card.create(
                 account,
                 cardNumber,
                 CardType.valueOf(command.cardType()),
-                expiryDate
+                expiredAt
         );
 
         return cardMapper.toResult(cardRepository.save(card));
@@ -63,84 +63,106 @@ public class CardService {
      * 카드 상태 변경 (분실 신고, 해지 등)
      */
     @Transactional
-    public CardUsecase.CardResult updateStatus(CardUsecase.UpdateCardStatusCommand command) {
-        Card card = cardRepository.findByExternalId(command.externalId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.CARD_NOT_FOUND));
+    public CardUsecase.CardResult updateStatus(CardUsecase.UpdateCardStatusCommand command, String memberExternalId) {
+        // 1. 카드 존재 여부 및 소유권 확인
+        Card card = findActiveCardWithOwnership(command.cardExternalId(), memberExternalId);
 
         card.changeStatus(CardStatus.valueOf(command.status()));
 
         return cardMapper.toResult(card);
     }
 
+    /**
+     * 카드 결제 처리
+     */
     @Transactional
-    public CardUsecase.CardPaymentResult pay(CardUsecase.CardPaymentCommand command) {
-        // 1. 검증 (카드, 비밀번호, 계좌)
-        Card card = findActiveCard(command.cardNumber());
-        verifyCardPassword(command.cardPassword(), card.getPassword());
+    public CardUsecase.CardPaymentResult pay(CardUsecase.CardPaymentCommand command, String memberExternalId) {
+        // 1. 멱등성 검증
+        return paymentRepository.findByIdempotencyKey(command.idempotencyKey())
+                .map(payment -> {
+                    return cardMapper.toPaymentResult(
+                            payment, payment.getTransaction(), payment.getCard(),
+                            payment.getCard().getAccount().getBalance(), payment.getMerchant().getMerchantName(), true
+                    );
+                })
+                .orElseGet(() -> {
+                    // 2. 결제 로직 수행 (기존 로직)
+                    Card card = findActiveCardWithOwnership(command.cardExternalId(), memberExternalId);
+                    verifyCardPassword(command.password(), card.getPassword());
 
-        Account userAccount = card.getAccount();
-        Account merchantAccount = findMerchantAccount(command.businessRegistrationNumber());
+                    Account userAccount = card.getAccount();
+                    Merchant merchant = findMerchantByBusinessNumber(command.businessNumber());
+                    Account merchantAccount = findMerchantAccount(merchant);
 
-        if (userAccount.getId().equals(merchantAccount.getId())) {
-            throw new BusinessException(ErrorCode.SELF_PAYMENT_NOT_ALLOWED);
-        }
+                    if (userAccount.getId().equals(merchantAccount.getId())) {
+                        throw new BusinessException(ErrorCode.SELF_PAYMENT_NOT_ALLOWED);
+                    }
 
-        // 2. 실질적 결제 처리 (잔액 이동)
-        userAccount.withdraw(command.amount());
-        merchantAccount.deposit(command.amount());
+                    // 3. 실질적 자금 이동
+                    userAccount.withdraw(command.amount());
+                    merchantAccount.deposit(command.amount());
 
-        // 3. Transaction(원장) 생성 및 기록
-        Transaction transaction = Transaction.createPayment(command.amount(), command.idempotencyKey());
-        TransactionItem.createWithdrawalItem(transaction, userAccount, command.amount(), 1);
-        TransactionItem.createDepositItem(transaction, merchantAccount, command.amount(), 2);
-        transactionRepository.save(transaction);
+                    // 4. 원장 및 비즈니스 기록 저장
+                    Transaction transaction = Transaction.createPayment(command.amount(), command.idempotencyKey());
+                    TransactionItem.createWithdrawalItem(transaction, userAccount, command.amount(), 1);
+                    TransactionItem.createDepositItem(transaction, merchantAccount, command.amount(), 2);
+                    transactionRepository.save(transaction);
 
-        // 4. Payment
-        Payment payment = Payment.create(
-                card,
-                merchantAccount,
-                transaction,
-                command.amount(),
-                command.idempotencyKey()
-        );
-        paymentRepository.save(payment);
+                    Payment payment = Payment.create(card, merchant, merchantAccount, transaction, command.amount(), command.idempotencyKey());
+                    paymentRepository.save(payment);
 
-        return cardMapper.toPaymentResult(payment, transaction, card, userAccount.getBalance());
+                    // 5. 신규 처리이므로 isRepeated = false
+                    return cardMapper.toPaymentResult(payment, transaction, card, userAccount.getBalance(), merchant.getMerchantName(), false);
+                });
     }
 
+    /**
+     * 카드 결제 환불 처리
+     */
     @Transactional
     public CardUsecase.RefundResult refund(CardUsecase.RefundCommand command) {
-        // 1. 원본 결제 건 조회
-        Payment payment = paymentRepository.findByExternalId(command.paymentExternalId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_NOT_FOUND));
+        // 1. 멱등성 검증
+        return refundRepository.findByIdempotencyKey(command.idempotencyKey())
+                .map(refund -> cardMapper.toRefundResult(refund.getPayment(), refund, refund.getTransaction(), true))
+                .orElseGet(() -> {
+                    // 2. 신규 환불 로직 수행
+                    Payment payment = paymentRepository.findByExternalId(command.paymentExternalId())
+                            .orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_NOT_FOUND));
 
-        // 2. 환불 가능 금액 검증 및 누적 환불 금액 업데이트 (엔티티 내부 로직)
-        payment.refund(command.amount());
+                    // 3. 엔티티 내부에서 환불 가능 금액 검증
+                    payment.refund(command.amount());
 
-        // 3. 자금 이동 (가맹점 계좌 -> 사용자 계좌)
-        Account merchantAccount = payment.getMerchantAccount();
-        Account userAccount = payment.getCard().getAccount();
+                    // 4. 실질적 자금 이동
+                    Account merchantAccount = payment.getMerchantAccount();
+                    Account userAccount = payment.getCard().getAccount();
 
-        merchantAccount.withdraw(command.amount()); // 가맹점에서 차감
-        userAccount.deposit(command.amount());     // 사용자에게 입금
+                    merchantAccount.withdraw(command.amount());
+                    userAccount.deposit(command.amount());
 
-        // 4. 환불용 Transaction 및 Item 기록
-        Transaction refundTransaction = Transaction.createRefund(command.amount(), command.idempotencyKey());
+                    Transaction refundTransaction = Transaction.createRefund(command.amount(), command.idempotencyKey());
+                    TransactionItem.createWithdrawalItem(refundTransaction, merchantAccount, command.amount(), 1);
+                    TransactionItem.createDepositItem(refundTransaction, userAccount, command.amount(), 2);
+                    transactionRepository.save(refundTransaction);
 
-        // 아이템 생성 (가맹점 출금, 사용자 입금)
-        TransactionItem.createWithdrawalItem(refundTransaction, merchantAccount, command.amount(), 1);
-        TransactionItem.createDepositItem(refundTransaction, userAccount, command.amount(), 2);
+                    Refund refund = Refund.create(payment, command.amount(), command.reason(), refundTransaction, command.idempotencyKey());
+                    refundRepository.save(refund);
 
-        transactionRepository.save(refundTransaction);
-
-        // 5. 최종 결과 반환
-        return cardMapper.toRefundResult(payment, refundTransaction);
+                    return cardMapper.toRefundResult(payment, refund, refundTransaction, false);
+                });
     }
 
     // --- Private Helper Methods ---
 
-    private Card findActiveCard(String cardNumber) {
-        Card card = cardRepository.findByCardNumber(cardNumber)
+    private Card findActiveCardWithOwnership(String cardExternalId, String externalId) {
+        Card card = findActiveCard(cardExternalId);
+        if (!card.getAccount().getMember().getExternalId().equals(externalId)) {
+            throw new BusinessException(ErrorCode.NOT_CARD_OWNER);
+        }
+        return card;
+    }
+
+    private Card findActiveCard(String cardExternalId) {
+        Card card = cardRepository.findByExternalId(cardExternalId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.CARD_NOT_FOUND));
         if (card.getStatus() != CardStatus.ACTIVE) {
             throw new BusinessException(ErrorCode.CARD_NOT_ACTIVE);
@@ -148,9 +170,14 @@ public class CardService {
         return card;
     }
 
-    private Account findMerchantAccount(String brn) {
-        return accountRepository.findByBusinessNumber(brn)
-                .orElseThrow(() -> new BusinessException(ErrorCode.MERCHANT_ACCOUNT_NOT_FOUND));
+    private Merchant findMerchantByBusinessNumber(String brn) {
+        return merchantRepository.findByBusinessNumber(brn)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MERCHANT_NOT_FOUND));
+    }
+
+    private Account findMerchantAccount(Member merchant) {
+        return accountRepository.findByMember(merchant)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
     }
 
     private void verifyCardPassword(String rawPassword, String encodedPassword) {
@@ -159,18 +186,23 @@ public class CardService {
         }
     }
 
-    private String cardNumberGenerator(CardType cardType) {
-        // 1. 시퀀스 번호 획득
-        Long seq = cardRepository.getNextCardSequence();
+    private Account findActiveAccountWithOwnership(String accountNumber, String externalId) {
+        Account account = findActiveAccount(accountNumber);
+        if (!account.getMember().getExternalId().equals(externalId)) {
+            throw new BusinessException(ErrorCode.NOT_ACCOUNT_OWNER);
+        }
+        return account;
+    }
 
-        // 2. 카드 타입에 따른 구분 코드 설정
-        int typeDigit = switch (cardType) {
-            case CHECK -> 1;
-            case CREDIT -> 2;
-            default -> 0; // 예외 케이스
-        };
+    private Account findActiveAccount(String accountNumber) {
+        return accountRepository.findByAccountNumber(accountNumber)
+                .filter(a -> a.getStatus() == AccountStatus.ACTIVE)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
+    }
 
-        // 3. 16자리 포맷팅
-        return String.format("9410%d%tY%07d", typeDigit, LocalDateTime.now(), seq);
+    private void verifyAccountPassword(String rawPassword, String encodedPassword) {
+        if (!passwordEncoder.matches(rawPassword, encodedPassword)) {
+            throw new BusinessException(ErrorCode.INVALID_PASSWORD);
+        }
     }
 }

@@ -15,24 +15,26 @@ public interface CardMapper {
     @Mapping(target = "paymentExternalId", source = "payment.externalId")
     @Mapping(target = "transactionExternalId", source = "transaction.externalId")
     @Mapping(target = "maskedCardNumber", expression = "java(maskCardNumber(card.getCardNumber()))")
-    @Mapping(target = "balanceAfter", source = "currentBalance")
-    @Mapping(target = "merchantName", source = "payment.merchantAccount.member.name")
-    @Mapping(target = "status", source = "transaction.status")
+    @Mapping(target = "status", source = "payment.status")
     @Mapping(target = "amount", source = "payment.amount")
+    @Mapping(target = "createdAt", source = "payment.createdAt")
     CardUsecase.CardPaymentResult toPaymentResult(
             Payment payment,
             Transaction transaction,
             Card card,
-            Long currentBalance
+            Long balanceAfter,
+            String merchantName,
+            boolean isRepeated
     );
 
-    @Mapping(target = "refundTransactionExternalId", source = "refundTransaction.externalId")
+    @Mapping(target = "refundExternalId", source = "refund.externalId")
+    @Mapping(target = "refundTxExternalId", source = "refundTx.externalId")
     @Mapping(target = "originalPaymentExternalId", source = "payment.externalId")
-    @Mapping(target = "refundAmount", source = "refundTransaction.amount")
-    @Mapping(target = "totalRefundedAmount", source = "payment.refundedAmount")
+    @Mapping(target = "status", source = "refund.status")
+    @Mapping(target = "originalAmount", source = "payment.amount")
     @Mapping(target = "remainingAmount", expression = "java(payment.getRefundableAmount())")
-    @Mapping(target = "occurredAt", source = "refundTransaction.createdAt")
-    CardUsecase.RefundResult toRefundResult(Payment payment, Transaction refundTransaction);
+    @Mapping(target = "createdAt", source = "refund.createdAt")
+    CardUsecase.RefundResult toRefundResult(Payment payment, Refund refund, Transaction refundTx, boolean isRepeated);
 
     default String maskCardNumber(String cardNumber) {
         if (cardNumber == null || cardNumber.length() < 16) return cardNumber;

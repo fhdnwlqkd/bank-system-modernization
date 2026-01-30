@@ -67,7 +67,7 @@ class MemberServiceTest {
             var result = memberService.merchantSignUp(command);
 
             // then
-            assertThat(result.shopName()).isEqualTo("맛있는카페");
+            assertThat(result.merchantName()).isEqualTo("맛있는카페");
 
             // 실제 계좌가 생성되었는지 확인 (Member ID로 조회)
             var member = memberRepository.findByExternalId(result.externalId()).orElseThrow();

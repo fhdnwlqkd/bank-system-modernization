@@ -69,7 +69,7 @@ public class MemberService implements UserDetailsService {
                 command.name(),
                 command.contact(),
                 command.businessNumber(),
-                command.shopName(),
+                command.merchantName(),
                 command.category()
         );
 
@@ -126,7 +126,7 @@ public class MemberService implements UserDetailsService {
 
         String encodedPassword = encodePasswordIfPresent(command.password());
         merchant.updateInfo(command.name(), command.contact(), encodedPassword);
-        merchant.updateMerchant(command.shopName(), command.category());
+        merchant.updateMerchant(command.merchantName(), command.category());
 
         return memberMapper.toResult(merchant);
     }

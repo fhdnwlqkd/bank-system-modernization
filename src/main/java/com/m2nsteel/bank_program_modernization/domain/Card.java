@@ -35,7 +35,7 @@ public class Card extends BaseEntity {
     private CardType cardType;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 10)
     private CardStatus status;
 
     private LocalDate expiredAt;
@@ -48,11 +48,13 @@ public class Card extends BaseEntity {
     public static Card create(
             Account account,
             String cardNumber,
+            String password,
             CardType cardType,
             LocalDate expiredAt
     ) {
         return Card.builder()
                 .account(account)
+                .password(password)
                 .cardNumber(cardNumber)
                 .cardType(cardType)
                 .status(CardStatus.ACTIVE)

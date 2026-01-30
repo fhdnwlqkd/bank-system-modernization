@@ -4,12 +4,12 @@ import com.m2nsteel.bank_program_modernization.domain.*;
 import com.m2nsteel.bank_program_modernization.usecase.CardUsecase;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.Named;
 import org.mapstruct.ReportingPolicy;
 
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface CardMapper {
-    @Mapping(target = "externalId", source = "card.externalId")
-    @Mapping(target = "cardNumber", expression = "java(maskCardNumber(card.getCardNumber()))")
+    @Mapping(target = "cardNumber", source = "card.cardNumber", qualifiedByName = "maskCard")
     CardUsecase.CardResult toResult(Card card);
 
     @Mapping(target = "paymentExternalId", source = "payment.externalId")
@@ -36,6 +36,7 @@ public interface CardMapper {
     @Mapping(target = "createdAt", source = "refund.createdAt")
     CardUsecase.RefundResult toRefundResult(Payment payment, Refund refund, Transaction refundTx, boolean isRepeated);
 
+    @Named("maskCard")
     default String maskCardNumber(String cardNumber) {
         if (cardNumber == null || cardNumber.length() < 16) return cardNumber;
         return cardNumber.substring(0, 4) + "-****-****-" + cardNumber.substring(12);

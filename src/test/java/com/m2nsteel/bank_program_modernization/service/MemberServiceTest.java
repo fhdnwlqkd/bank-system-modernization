@@ -59,7 +59,7 @@ class MemberServiceTest {
         void merchantSignUp_WithAccount_Success() {
             // given
             var command = new MemberUsecase.MerchantSignUpCommand(
-                    "merchant1", PASSWORD, "카페주인", "010-3333-4444",
+                    "merchant1", PASSWORD, "1234","카페주인", "010-3333-4444",
                     "123-45-67890", "맛있는카페", "음식점"
             );
 

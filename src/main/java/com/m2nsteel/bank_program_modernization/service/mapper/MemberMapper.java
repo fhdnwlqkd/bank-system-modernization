@@ -12,4 +12,5 @@ public interface MemberMapper {
     MemberUsecase.MemberResult toResult(Member member);
     MemberUsecase.AdminResult toResult(Admin admin);
     MemberUsecase.MerchantResult toResult(Merchant merchant);
+    MemberUsecase.MerchantSignUpResult toSignUpResult(Merchant merchant, String accountNumber);
 }

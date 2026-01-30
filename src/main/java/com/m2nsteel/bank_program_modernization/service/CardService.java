@@ -52,6 +52,7 @@ public class CardService {
         Card card = Card.create(
                 account,
                 cardNumber,
+                passwordEncoder.encode(command.cardPassword()),
                 CardType.valueOf(command.cardType()),
                 expiredAt
         );

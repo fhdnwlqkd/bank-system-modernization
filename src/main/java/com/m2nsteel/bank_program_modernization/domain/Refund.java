@@ -21,6 +21,7 @@ public class Refund extends BaseEntity {
 
     private String reason;
 
+    @Enumerated(EnumType.STRING)
     private RefundStatus status;
 
     @OneToOne(fetch = FetchType.LAZY)

@@ -7,6 +7,7 @@ import com.m2nsteel.bank_program_modernization.domain.Account;
 import com.m2nsteel.bank_program_modernization.domain.Admin;
 import com.m2nsteel.bank_program_modernization.domain.Member;
 import com.m2nsteel.bank_program_modernization.domain.Merchant;
+import com.m2nsteel.bank_program_modernization.repository.MerchantRepository;
 import com.m2nsteel.bank_program_modernization.usecase.MemberUsecase;
 import com.m2nsteel.bank_program_modernization.service.mapper.MemberMapper;
 import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
@@ -30,6 +31,7 @@ import org.springframework.util.StringUtils;
 public class MemberService implements UserDetailsService {
 
     private final MemberRepository memberRepository;
+    private final MerchantRepository merchantRepository;
     private final AccountRepository accountRepository;
     private final MemberMapper memberMapper;
     private final PasswordEncoder passwordEncoder;
@@ -58,7 +60,7 @@ public class MemberService implements UserDetailsService {
      * 2. 가맹점 회원 가입 (Merchant)
      */
     @Transactional
-    public MemberUsecase.MerchantResult merchantSignUp(MemberUsecase.MerchantSignUpCommand command) {
+    public MemberUsecase.MerchantSignUpResult merchantSignUp(MemberUsecase.MerchantSignUpCommand command) {
         validateDuplicateLoginId(command.loginId());
 
         String encodedPassword = passwordEncoder.encode(command.password());
@@ -74,9 +76,9 @@ public class MemberService implements UserDetailsService {
         );
 
         Merchant savedMerchant = memberRepository.save(merchant);
-        createMerchantAccount(savedMerchant);
+        String accountNumber = createMerchantAccount(savedMerchant, command.accountPassword()).getAccountNumber();
 
-        return memberMapper.toResult(savedMerchant);
+        return memberMapper.toSignUpResult(savedMerchant, accountNumber);
     }
 
     /**
@@ -117,12 +119,7 @@ public class MemberService implements UserDetailsService {
      */
     @Transactional
     public MemberUsecase.MerchantResult updateMerchantInfo(String externalId, MemberUsecase.MerchantUpdateCommand command) {
-        Member member = findMemberOrThrow(externalId);
-
-        // 안전한 타입 캐스팅 검증
-        if (!(member instanceof Merchant merchant)) {
-            throw new BusinessException(ErrorCode.INVALID_MEMBER_TYPE);
-        }
+        Merchant merchant = findMerchantOrThrow(externalId);
 
         String encodedPassword = encodePasswordIfPresent(command.password());
         merchant.updateInfo(command.name(), command.contact(), encodedPassword);
@@ -179,19 +176,28 @@ public class MemberService implements UserDetailsService {
         return member;
     }
 
+    private Merchant findMerchantOrThrow(String externalId) {
+        Merchant merchant = merchantRepository.findByExternalId(externalId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MERCHANT_NOT_FOUND));
+        if (!merchant.isActive()) {
+            throw new BusinessException(ErrorCode.MEMBER_NOT_ACTIVE);
+        }
+        return merchant;
+    }
+
     private void validateDuplicateLoginId(String loginId) {
         if (memberRepository.existsByLoginId(loginId)) {
             throw new BusinessException(ErrorCode.DUPLICATE_LOGIN_ID);
         }
     }
 
-    private void createMerchantAccount(Merchant merchant) {
+    private Account createMerchantAccount(Merchant merchant, String accountPassword) {
         Account account = Account.create(
                 generator.generate(),
-                merchant.getPassword(),
+                accountPassword,
                 merchant
         );
-        accountRepository.save(account);
+        return accountRepository.save(account);
     }
 
     private @Nullable String encodePasswordIfPresent(@Nullable String rawPassword) {

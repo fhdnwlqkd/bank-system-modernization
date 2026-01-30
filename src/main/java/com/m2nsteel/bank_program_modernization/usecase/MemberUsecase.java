@@ -39,6 +39,7 @@ public class MemberUsecase {
     public record MerchantSignUpCommand(
             String loginId,
             String password,
+            String accountPassword,
             String name,
             String contact,
             String businessNumber,
@@ -81,6 +82,20 @@ public class MemberUsecase {
             String contact,
             MemberRole role,
             String businessNumber,
+            String merchantName,
+            String category,
+            MemberStatus status,
+            LocalDateTime createdAt
+    ) {}
+
+    public record MerchantSignUpResult(
+            String externalId,
+            String loginId,
+            String name,
+            String contact,
+            MemberRole role,
+            String businessNumber,
+            String accountNumber,
             String merchantName,
             String category,
             MemberStatus status,

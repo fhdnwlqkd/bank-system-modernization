@@ -8,5 +8,5 @@ import java.util.Optional;
 
 public interface MerchantRepository extends JpaRepository<Merchant, Long> {
     Optional<Merchant> findByBusinessNumber(String businessNumber);
-
+    Optional<Merchant> findByExternalId(String externalId);
 }

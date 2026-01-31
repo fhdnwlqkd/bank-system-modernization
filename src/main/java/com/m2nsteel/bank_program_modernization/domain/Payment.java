@@ -65,6 +65,7 @@ public class Payment extends BaseEntity {
                 .cardAccount(cardAccount)
                 .merchant(merchant)
                 .merchantAccount(merchantAccount)
+                .status(PaymentStatus.SUCCESS)
                 .transaction(transaction)
                 .amount(amount)
                 .totalRefundedAmount(0L)

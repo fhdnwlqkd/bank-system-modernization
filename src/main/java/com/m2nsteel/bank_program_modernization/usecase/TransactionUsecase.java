@@ -58,10 +58,4 @@ public class TransactionUsecase {
             Long balanceAfter,         // 이 거래 직후의 내 계좌 잔액
             LocalDateTime createdAt    // 거래 일시
     ) {}
-
-    public record CursorResult<T>(
-            List<T> values,
-            Long nextCursor,
-            boolean hasNext
-    ) {}
 }

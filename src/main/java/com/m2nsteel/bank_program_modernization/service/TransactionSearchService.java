@@ -8,6 +8,7 @@ import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
 import com.m2nsteel.bank_program_modernization.repository.transaction.TransactionQueryCriteria;
 import com.m2nsteel.bank_program_modernization.repository.transaction.TransactionRepository;
 import com.m2nsteel.bank_program_modernization.service.mapper.TransactionMapper;
+import com.m2nsteel.bank_program_modernization.usecase.CursorResult;
 import com.m2nsteel.bank_program_modernization.usecase.TransactionUsecase;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
@@ -29,7 +30,7 @@ public class TransactionSearchService {
     /**
      * 내 계좌의 거래 내역 검색 (동적 조건 및 페이징)
      */
-    public TransactionUsecase.CursorResult<TransactionUsecase.TransactionHistoryResult> searchTransactions(
+    public CursorResult<TransactionUsecase.TransactionHistoryResult> searchTransactions(
             String requesterExternalId,
             boolean isAdmin,
             TransactionUsecase.TransactionSearchCondition condition,
@@ -56,6 +57,6 @@ public class TransactionSearchService {
         Long nextCursor = values.isEmpty() ? null :
                 slice.getContent().get(values.size() - 1).getId();
 
-        return new TransactionUsecase.CursorResult<>(values, nextCursor, slice.hasNext());
+        return new CursorResult<>(values, nextCursor, slice.hasNext());
     }
 }

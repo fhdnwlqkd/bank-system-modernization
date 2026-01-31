@@ -8,7 +8,7 @@ import com.m2nsteel.bank_program_modernization.domain.Admin;
 import com.m2nsteel.bank_program_modernization.domain.Member;
 import com.m2nsteel.bank_program_modernization.domain.Merchant;
 import com.m2nsteel.bank_program_modernization.repository.AdminRepository;
-import com.m2nsteel.bank_program_modernization.repository.MerchantRepository;
+import com.m2nsteel.bank_program_modernization.repository.merchant.MerchantRepository;
 import com.m2nsteel.bank_program_modernization.usecase.MemberUsecase;
 import com.m2nsteel.bank_program_modernization.service.mapper.MemberMapper;
 import com.m2nsteel.bank_program_modernization.repository.AccountRepository;

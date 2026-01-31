@@ -8,6 +8,7 @@ import com.m2nsteel.bank_program_modernization.domain.constant.AccountStatus;
 import com.m2nsteel.bank_program_modernization.domain.constant.CardStatus;
 import com.m2nsteel.bank_program_modernization.domain.constant.CardType;
 import com.m2nsteel.bank_program_modernization.repository.*;
+import com.m2nsteel.bank_program_modernization.repository.transaction.TransactionRepository;
 import com.m2nsteel.bank_program_modernization.service.mapper.CardMapper;
 import com.m2nsteel.bank_program_modernization.usecase.CardUsecase;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +18,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor

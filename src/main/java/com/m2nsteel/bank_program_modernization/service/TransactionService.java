@@ -7,7 +7,7 @@ import com.m2nsteel.bank_program_modernization.domain.Transaction;
 import com.m2nsteel.bank_program_modernization.domain.TransactionItem;
 import com.m2nsteel.bank_program_modernization.domain.constant.AccountStatus;
 import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
-import com.m2nsteel.bank_program_modernization.repository.TransactionRepository;
+import com.m2nsteel.bank_program_modernization.repository.transaction.TransactionRepository;
 import com.m2nsteel.bank_program_modernization.usecase.TransactionUsecase;
 import com.m2nsteel.bank_program_modernization.service.mapper.TransactionMapper;
 import lombok.RequiredArgsConstructor;

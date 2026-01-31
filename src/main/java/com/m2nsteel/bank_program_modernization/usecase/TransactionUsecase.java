@@ -1,9 +1,11 @@
 package com.m2nsteel.bank_program_modernization.usecase;
 
+import com.m2nsteel.bank_program_modernization.domain.constant.TransactionType;
 import org.jspecify.annotations.NullMarked;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @NullMarked
 public class TransactionUsecase {
@@ -15,7 +17,15 @@ public class TransactionUsecase {
 
     public record TransferCommand(String fromAccountNumber, String toAccountNumber, Long amount, String accountPassword, String idempotencyKey) {}
 
-    public record SearchQuery(String accountNumber, LocalDate from, LocalDate to) {}
+    public record TransactionSearchCondition(
+            String accountExternalId,
+            LocalDate startDate,
+            LocalDate endDate,
+            TransactionType type,
+            Long minAmount,
+            Long maxAmount,
+            Long lastId
+    ) {}
 
     // --- 출력(Result) ---
     public record GeneralResult(
@@ -38,5 +48,20 @@ public class TransactionUsecase {
             String status,
             boolean isRepeated,
             LocalDateTime createdAt
+    ) {}
+
+    public record TransactionHistoryResult(
+            String txExternalId,       // 거래 식별자 (조회/상세용)
+            String type,               // 거래 유형 (입금, 출금, 결제 등)
+            Long amount,               // 거래 총액
+            Long delta,                // 내 계좌의 실제 변동 금액 (입금은 +, 출금은 -)
+            Long balanceAfter,         // 이 거래 직후의 내 계좌 잔액
+            LocalDateTime createdAt    // 거래 일시
+    ) {}
+
+    public record CursorResult<T>(
+            List<T> values,
+            Long nextCursor,
+            boolean hasNext
     ) {}
 }

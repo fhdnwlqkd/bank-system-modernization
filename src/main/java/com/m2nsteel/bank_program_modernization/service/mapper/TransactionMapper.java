@@ -2,6 +2,7 @@ package com.m2nsteel.bank_program_modernization.service.mapper;
 
 import com.m2nsteel.bank_program_modernization.domain.Transaction;
 import com.m2nsteel.bank_program_modernization.domain.TransactionItem;
+import com.m2nsteel.bank_program_modernization.repository.transaction.TransactionQueryCriteria;
 import com.m2nsteel.bank_program_modernization.usecase.TransactionUsecase;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
@@ -17,6 +18,14 @@ public interface TransactionMapper {
     @Mapping(target = "isRepeated", source = "isRepeated")
     TransactionUsecase.GeneralResult toResult(Transaction transaction, TransactionItem item, boolean isRepeated);
 
+    @Mapping(target = "txExternalId", source = "item.transaction.externalId")
+    @Mapping(target = "type", source = "item.transaction.type")
+    @Mapping(target = "amount", source = "item.transaction.amount")
+    @Mapping(target = "delta", source = "item.delta")
+    @Mapping(target = "balanceAfter", source = "item.balanceAfter")
+    @Mapping(target = "createdAt", source = "item.transaction.createdAt")
+    TransactionUsecase.TransactionHistoryResult toHistoryResult(TransactionItem item);
+
     @Mapping(target = "txExternalId", source = "transaction.externalId")
     @Mapping(target = "fromAccountNumber", source = "fromItem.account.accountNumber")
     @Mapping(target = "toAccountNumber", source = "toItem.account.accountNumber")
@@ -24,4 +33,6 @@ public interface TransactionMapper {
     @Mapping(target = "createdAt", source = "transaction.createdAt")
     @Mapping(target = "isRepeated", source = "isRepeated")
     TransactionUsecase.TransferResult toTransferResult(Transaction transaction, TransactionItem fromItem, TransactionItem toItem, boolean isRepeated);
+
+    TransactionQueryCriteria toCriteria(TransactionUsecase.TransactionSearchCondition condition);
 }

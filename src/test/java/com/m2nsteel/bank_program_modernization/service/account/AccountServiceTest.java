@@ -1,10 +1,11 @@
-package com.m2nsteel.bank_program_modernization.service;
+package com.m2nsteel.bank_program_modernization.service.account;
 
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
 import com.m2nsteel.bank_program_modernization.domain.Member;
 import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
 import com.m2nsteel.bank_program_modernization.repository.MemberRepository;
+import com.m2nsteel.bank_program_modernization.service.AccountService;
 import com.m2nsteel.bank_program_modernization.usecase.AccountUsecase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;

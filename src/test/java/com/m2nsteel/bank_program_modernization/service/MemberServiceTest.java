@@ -124,4 +124,22 @@ class MemberServiceTest {
             assertThat(member.getStatus()).isEqualTo(MemberStatus.WITHDRAWN);
         }
     }
+
+    @Nested
+    @DisplayName("조회 검증")
+    class QueryTest {
+        @Test
+        @DisplayName("회원 정보 조회 성공")
+        void getMemberInfo_Success() {
+            // given
+            var signup = memberService.signUp(new MemberUsecase.MemberSignUpCommand("user4", PASSWORD, "이름", "010"));
+
+            // when
+            var result = memberService.getMemberInfo(signup.externalId());
+
+            // then
+            assertThat(result.loginId()).isEqualTo("user4");
+            assertThat(result.name()).isEqualTo("이름");
+        }
+    }
 }

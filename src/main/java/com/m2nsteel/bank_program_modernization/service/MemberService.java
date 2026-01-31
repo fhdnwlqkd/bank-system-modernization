@@ -38,7 +38,15 @@ public class MemberService implements UserDetailsService {
     private final AccountNumberGenerator generator;
 
     /**
-     * 1. 일반 회원 가입 (Member)
+     * 내 정보 조회
+     */
+    public MemberUsecase.MemberResult getMyInfo(String externalId) {
+        Member member = findMemberOrThrow(externalId);
+        return memberMapper.toResult(member);
+    }
+
+    /**
+     * 일반 회원 가입 (Member)
      */
     @Transactional
     public MemberUsecase.MemberResult signUp(MemberUsecase.MemberSignUpCommand command) {
@@ -57,7 +65,7 @@ public class MemberService implements UserDetailsService {
     }
 
     /**
-     * 2. 가맹점 회원 가입 (Merchant)
+     * 가맹점 회원 가입 (Merchant)
      */
     @Transactional
     public MemberUsecase.MerchantSignUpResult merchantSignUp(MemberUsecase.MerchantSignUpCommand command) {
@@ -82,7 +90,7 @@ public class MemberService implements UserDetailsService {
     }
 
     /**
-     * 3. 관리자 회원 가입 (Admin)
+     * 관리자 회원 가입 (Admin)
      */
     @Transactional
     public MemberUsecase.AdminResult adminSignUp(MemberUsecase.AdminSignUpCommand command) {

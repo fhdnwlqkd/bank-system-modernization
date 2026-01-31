@@ -7,6 +7,7 @@ import com.m2nsteel.bank_program_modernization.domain.Account;
 import com.m2nsteel.bank_program_modernization.domain.Admin;
 import com.m2nsteel.bank_program_modernization.domain.Member;
 import com.m2nsteel.bank_program_modernization.domain.Merchant;
+import com.m2nsteel.bank_program_modernization.repository.AdminRepository;
 import com.m2nsteel.bank_program_modernization.repository.MerchantRepository;
 import com.m2nsteel.bank_program_modernization.usecase.MemberUsecase;
 import com.m2nsteel.bank_program_modernization.service.mapper.MemberMapper;
@@ -32,6 +33,7 @@ public class MemberService implements UserDetailsService {
 
     private final MemberRepository memberRepository;
     private final MerchantRepository merchantRepository;
+    private final AdminRepository adminRepository;
     private final AccountRepository accountRepository;
     private final MemberMapper memberMapper;
     private final PasswordEncoder passwordEncoder;
@@ -43,6 +45,22 @@ public class MemberService implements UserDetailsService {
     public MemberUsecase.MemberResult getMyInfo(String externalId) {
         Member member = findMemberOrThrow(externalId);
         return memberMapper.toResult(member);
+    }
+
+    /**
+     * 내 가맹점 정보 조회
+     */
+    public MemberUsecase.MerchantResult getMyMerchantInfo(String externalId) {
+        Merchant merchant = findMerchantOrThrow(externalId);
+        return memberMapper.toResult(merchant);
+    }
+
+    /**
+     * 관리자 정보 조회
+     */
+    public MemberUsecase.AdminResult getMyAdminInfo(String externalId) {
+        Admin admin = findAdminOrThrow(externalId);
+        return memberMapper.toResult(admin);
     }
 
     /**
@@ -141,13 +159,7 @@ public class MemberService implements UserDetailsService {
      */
     @Transactional
     public MemberUsecase.AdminResult updateAdminInfo(String externalId, MemberUsecase.AdminUpdateCommand command) {
-        Member member = findMemberOrThrow(externalId);
-
-        // 안전한 타입 캐스팅 검증
-        if (!(member instanceof Admin admin)) {
-            throw new BusinessException(ErrorCode.INVALID_MEMBER_TYPE);
-        }
-
+        Admin admin = findAdminOrThrow(externalId);
         String encodedPassword = encodePasswordIfPresent(command.password());
         admin.updateInfo(command.name(), command.contact(), encodedPassword);
         admin.updateAdmin(command.department());
@@ -191,6 +203,15 @@ public class MemberService implements UserDetailsService {
             throw new BusinessException(ErrorCode.MEMBER_NOT_ACTIVE);
         }
         return merchant;
+    }
+
+    private Admin findAdminOrThrow(String externalId) {
+        Admin admin = adminRepository.findByExternalId(externalId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ADMIN_NOT_FOUND));
+        if (!admin.isActive()) {
+            throw new BusinessException(ErrorCode.MEMBER_NOT_ACTIVE);
+        }
+        return admin;
     }
 
     private void validateDuplicateLoginId(String loginId) {

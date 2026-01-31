@@ -141,5 +141,39 @@ class MemberServiceTest {
             assertThat(result.loginId()).isEqualTo("user4");
             assertThat(result.name()).isEqualTo("이름");
         }
+
+        @Test
+        @DisplayName("가맹점 정보 조회 성공")
+        void getMerchantInfo_Success() {
+            // given
+            var signup = memberService.merchantSignUp(new MemberUsecase.MerchantSignUpCommand(
+                    "merchant2", PASSWORD, "5678","가맹점주", "010-5555-6666",
+                    "987-65-43210", "멋진가게", "소매점"
+            ));
+
+            // when
+            var result = memberService.getMyMerchantInfo(signup.externalId());
+
+            // then
+            assertThat(result.loginId()).isEqualTo("merchant2");
+            assertThat(result.merchantName()).isEqualTo("멋진가게");
+        }
+
+        @Test
+        @DisplayName("관리자 정보 조회 성공")
+        void getAdminInfo_Success() {
+            // given
+            var admin = memberService.adminSignUp(new MemberUsecase.AdminSignUpCommand(
+                    "admin1", PASSWORD, "관리자", "010-7777-8888", "SYSTEM"
+            ));
+
+            // when
+            var result = memberService.getMyAdminInfo(admin.externalId());
+
+            // then
+            assertThat(result.loginId()).isEqualTo("admin1");
+            assertThat(result.name()).isEqualTo("관리자");
+            assertThat(result.department()).isEqualTo("SYSTEM");
+        }
     }
 }

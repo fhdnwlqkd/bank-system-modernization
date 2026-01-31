@@ -18,6 +18,7 @@ public enum ErrorCode {
     INVALID_PASSWORD("M003", "비밀번호가 올바르지 않습니다.", HttpStatus.UNAUTHORIZED),
     MEMBER_NOT_ACTIVE("M004", "비활성화된 회원입니다.", HttpStatus.FORBIDDEN),
     MERCHANT_NOT_FOUND("M005", "가맹점을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
+    ADMIN_NOT_FOUND("M006", "관리자 계정을 찾을 수 없습니다.", HttpStatus.NOT_FOUND),
 
     // account
     INSUFFICIENT_BALANCE("A001", "잔액이 부족합니다.", HttpStatus.BAD_REQUEST),

@@ -10,6 +10,7 @@ import com.m2nsteel.bank_program_modernization.domain.constant.CardType;
 import com.m2nsteel.bank_program_modernization.repository.*;
 import com.m2nsteel.bank_program_modernization.repository.transaction.TransactionRepository;
 import com.m2nsteel.bank_program_modernization.service.mapper.CardMapper;
+import com.m2nsteel.bank_program_modernization.usecase.AccountUsecase;
 import com.m2nsteel.bank_program_modernization.usecase.CardUsecase;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
@@ -18,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +29,7 @@ public class CardService {
 
     private final CardRepository cardRepository;
     private final AccountRepository accountRepository;
+    private final MemberRepository memberRepository;
     private final MerchantRepository merchantRepository;
     private final TransactionRepository transactionRepository;
     private final PaymentRepository paymentRepository;
@@ -34,6 +37,29 @@ public class CardService {
     private final CardMapper cardMapper;
     private final PasswordEncoder passwordEncoder;
     private final CardNumberGenerator generator;
+
+    /**
+     * 내 모든 카드 목록 조회
+     */
+    public List<CardUsecase.CardResult> getMyCards(String memberExternalId) {
+        // 1. 회원의 externalId로 연결된 모든 카드 조회
+        List<Card> cards = cardRepository.findAllByMemberExternalId(memberExternalId);
+
+        // 2. 결과 매핑 후 반환
+        return cards.stream()
+                .map(cardMapper::toResult)
+                .toList();
+    }
+
+    /**
+     * 특정 카드 상세 조회
+     */
+    public CardUsecase.CardResult getCardDetail(String cardExternalId, String memberExternalId) {
+        // 1. 카드 존재 여부 및 소유권 확인
+        Card card = findActiveCardWithOwnership(cardExternalId, memberExternalId);
+
+        return cardMapper.toResult(card);
+    }
 
     /**
      * 카드 신규 발급
@@ -69,6 +95,23 @@ public class CardService {
         Card card = findActiveCardWithOwnership(command.cardExternalId(), memberExternalId);
 
         card.changeStatus(CardStatus.valueOf(command.status()));
+
+        return cardMapper.toResult(card);
+    }
+
+    /**
+     * 카드 비밀번호 변경
+     */
+    @Transactional
+    public CardUsecase.CardResult changePassword(CardUsecase.ChangeCardPasswordCommand command, String cardExternalId, String memberExternalId) {
+        // 1. 카드 존재 여부 및 소유권 확인
+        Card card = findActiveCardWithOwnership(cardExternalId, memberExternalId);
+
+        // 2. 현재 비밀번호 검증
+        verifyCardPassword(command.oldPassword(), card.getPassword());
+
+        // 3. 비밀번호 변경
+        card.changePassword(passwordEncoder.encode(command.newPassword()));
 
         return cardMapper.toResult(card);
     }

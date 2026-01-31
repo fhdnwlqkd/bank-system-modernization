@@ -10,6 +10,7 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface CardMapper {
     @Mapping(target = "cardNumber", source = "card.cardNumber", qualifiedByName = "maskCard")
+    @Mapping(target = "accountNumber", source = "card.account.accountNumber")
     CardUsecase.CardResult toResult(Card card);
 
     @Mapping(target = "paymentExternalId", source = "payment.externalId")

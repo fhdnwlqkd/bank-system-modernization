@@ -9,6 +9,11 @@ import java.time.LocalDateTime;
 public class CardUsecase {
 
     // --- 입력(Command) ---
+    public record ChangeCardPasswordCommand(
+            String oldPassword,
+            String newPassword
+    ) {}
+
     public record IssueCardCommand(
             String accountNumber,
             String accountPassword,
@@ -41,6 +46,7 @@ public class CardUsecase {
     public record CardResult(
             String externalId,
             String cardNumber,
+            String accountNumber,
             String cardType,
             String status,
             LocalDate expiredAt,

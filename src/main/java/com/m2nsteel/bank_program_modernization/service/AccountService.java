@@ -75,10 +75,7 @@ public class AccountService {
      */
     public AccountUsecase.AccountResult getAccountDetail(String accountExternalId, String memberExternalId) {
         // 1. 계좌 및 회원 조회
-        Member member = memberRepository.findByExternalId(memberExternalId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
-        Account account = accountRepository.findByExternalIdAndMember(accountExternalId, member)
-                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
+        Account account = findMyAccount(accountExternalId, memberExternalId);
         return accountMapper.toResult(account);
     }
 
@@ -110,9 +107,13 @@ public class AccountService {
     }
 
     private Account findMyAccount(String accountExternalId, String memberExternalId) {
-        Member member = memberRepository.findByExternalId(memberExternalId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
-        return accountRepository.findByExternalIdAndMember(accountExternalId, member)
+        // 1. 인가 체크: 계좌 존재 여부 및 소유권 확인
+        Account account = accountRepository.findByExternalId(accountExternalId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
+
+        if (!account.getMember().getExternalId().equals(memberExternalId)) {
+            throw new BusinessException(ErrorCode.NOT_ACCOUNT_OWNER);
+        }
+        return account;
     }
 }

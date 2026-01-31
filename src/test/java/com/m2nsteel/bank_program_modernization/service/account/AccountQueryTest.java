@@ -69,14 +69,14 @@ public class AccountQueryTest {
     }
 
     @Test
-    @DisplayName("실패: 타인의 계좌 상세 조회 - ACCOUNT_NOT_FOUND 예외 발생")
+    @DisplayName("실패: 타인의 계좌 상세 조회 - 예외 발생")
     void getAccountDetail_Unauthorized_Fail() {
         // Given: 사용자B의 계좌 ID를 사용자A가 훔쳐본다고 가정
-        String memberBAccountId = accountService.getMyAccounts(memberBId).get(0).externalId();
+        String memberBAccountId = accountService.getMyAccounts(memberBId).getFirst().externalId();
 
         // When & Then: 사용자A가 B의 계좌를 조회하려고 하면 예외 발생
         assertThatThrownBy(() -> accountService.getAccountDetail(memberBAccountId, memberAId))
                 .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.ACCOUNT_NOT_FOUND);
+                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.NOT_ACCOUNT_OWNER);
     }
 }

@@ -12,6 +12,7 @@ import com.m2nsteel.bank_program_modernization.usecase.MemberUsecase;
 import com.m2nsteel.bank_program_modernization.usecase.TransactionUsecase;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -141,5 +142,59 @@ class CardServiceTest {
         assertThatThrownBy(() -> cardService.pay(payCmd, memberId))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.CARD_NOT_ACTIVE);
+    }
+
+    @Test
+    @DisplayName("성공: 카드 비밀번호 변경")
+    void change_Card_Password_Success() {
+        // Given: 카드 발급
+        var card = cardService.issueCard(new CardUsecase.IssueCardCommand(
+                userAccountNo, PASSWORD, CARD_PASS, "CHECK"), memberId);
+
+        // When: 카드 비밀번호 변경
+        cardService.changePassword(new CardUsecase.ChangeCardPasswordCommand(CARD_PASS, "5678"), card.externalId(),memberId);
+
+        // Then: 변경된 비밀번호로 결제 성공 확인
+        var payCmd = new CardUsecase.CardPaymentCommand(
+                card.externalId(), 5000L, "5678", "123-45-67890", "idemp-change-pass-1");
+
+        var payResult = cardService.pay(payCmd, memberId);
+
+        assertThat(payResult.amount()).isEqualTo(5000L);
+    }
+
+    @Nested
+    @DisplayName("조회 테스트")
+    class QueryTest {
+        @Test
+        @DisplayName("성공: 내 카드 조회")
+        void get_My_Cards_Success() {
+            // Given: 카드 발급
+            cardService.issueCard(new CardUsecase.IssueCardCommand(
+                    userAccountNo, PASSWORD, CARD_PASS, "CHECK"), memberId);
+            cardService.issueCard(new CardUsecase.IssueCardCommand(
+                    userAccountNo, PASSWORD, CARD_PASS, "CREDIT"), memberId);
+
+            // When: 내 카드 조회
+            var cards = cardService.getMyCards(memberId);
+
+            // Then: 2개의 카드가 조회됨
+            assertThat(cards.size()).isEqualTo(2);
+        }
+
+        @Test
+        @DisplayName("성공: 카드 상세 조회")
+        void get_Card_Detail_Success() {
+            // Given: 카드 발급
+            var card = cardService.issueCard(new CardUsecase.IssueCardCommand(
+                    userAccountNo, PASSWORD, CARD_PASS, "CHECK"), memberId);
+
+            // When: 카드 상세 조회
+            var cardDetail = cardService.getCardDetail(card.externalId(), memberId);
+
+            // Then: 카드 정보 일치 확인
+            assertThat(cardDetail.externalId()).isEqualTo(card.externalId());
+            assertThat(cardDetail.cardType()).isEqualTo("CHECK");
+        }
     }
 }

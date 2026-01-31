@@ -15,7 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.concurrent.ThreadLocalRandom;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -55,5 +55,64 @@ public class AccountService {
         );
 
         return accountMapper.toResult(accountRepository.save(account));
+    }
+
+    /**
+     * 계좌 조회
+     */
+    public List<AccountUsecase.AccountResult> getMyAccounts(String memberExternalId) {
+        Member member = memberRepository.findByExternalId(memberExternalId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        // Member의 externalId로 연관된 모든 계좌를 조회합니다.
+        return accountRepository.findAllByMember(member)
+                .stream()
+                .map(accountMapper::toResult)
+                .toList();
+    }
+
+    /**
+     * 특정 계좌 상세 조회
+     */
+    public AccountUsecase.AccountResult getAccountDetail(String accountExternalId, String memberExternalId) {
+        // 1. 계좌 및 회원 조회
+        Member member = memberRepository.findByExternalId(memberExternalId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        Account account = accountRepository.findByExternalIdAndMember(accountExternalId, member)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
+        return accountMapper.toResult(account);
+    }
+
+    /**
+     * 계좌 비밀번호 변경
+     */
+    @Transactional
+    public AccountUsecase.AccountResult changePassword(AccountUsecase.AccountChangePasswordCommand command, String accountExternalId, String memberExternalId) {
+        // 1. 계좌 및 회원 조회
+        Account account = findMyAccount(accountExternalId, memberExternalId);
+        // 2. 현재 비밀번호 검증
+        if (!passwordEncoder.matches(command.password(), account.getAccountPassword())) {
+            throw new BusinessException(ErrorCode.INVALID_PASSWORD);
+        }
+        // 3. 비밀번호 변경
+        account.changePassword(passwordEncoder.encode(command.newPassword()));
+        return accountMapper.toResult(account);
+    }
+
+    /**
+     * 계좌 정지
+     */
+    @Transactional
+    public AccountUsecase.AccountResult close(String accountExternalId, String memberExternalId) {
+        // 1. 계좌 및 회원 조회
+        Account account = findMyAccount(accountExternalId, memberExternalId);
+        account.close();
+        return accountMapper.toResult(account);
+    }
+
+    private Account findMyAccount(String accountExternalId, String memberExternalId) {
+        Member member = memberRepository.findByExternalId(memberExternalId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        return accountRepository.findByExternalIdAndMember(accountExternalId, member)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
     }
 }

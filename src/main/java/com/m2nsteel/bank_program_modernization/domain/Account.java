@@ -62,6 +62,10 @@ public class Account extends BaseEntity {
         this.status = AccountStatus.CLOSED;
     }
 
+    public void changePassword(String newPassword) {
+        this.accountPassword = newPassword;
+    }
+
     public static Account create(String accountNumber, String accountPassword, Member member) {
         return Account.builder()
                 .accountNumber(accountNumber)

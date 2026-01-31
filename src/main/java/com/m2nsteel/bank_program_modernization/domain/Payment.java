@@ -19,6 +19,10 @@ public class Payment extends BaseEntity {
     private Card card;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "account_id", nullable = false)
+    private Account cardAccount;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     private Merchant merchant;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -55,9 +59,10 @@ public class Payment extends BaseEntity {
         return this.amount - this.totalRefundedAmount;
     }
 
-    public static Payment create(Card card, Merchant merchant, Account merchantAccount, Transaction transaction, Long amount, String idempotencyKey) {
+    public static Payment create(Card card, Account cardAccount, Merchant merchant, Account merchantAccount, Transaction transaction, Long amount, String idempotencyKey) {
         return Payment.builder()
                 .card(card)
+                .cardAccount(cardAccount)
                 .merchant(merchant)
                 .merchantAccount(merchantAccount)
                 .transaction(transaction)

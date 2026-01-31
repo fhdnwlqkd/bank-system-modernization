@@ -126,7 +126,7 @@ public class CardService {
                 .map(payment -> {
                     return cardMapper.toPaymentResult(
                             payment, payment.getTransaction(), payment.getCard(),
-                            payment.getCard().getAccount().getBalance(), payment.getMerchant().getMerchantName(), true
+                            payment.getCardAccount(), payment.getMerchant().getMerchantName(), true
                     );
                 })
                 .orElseGet(() -> {
@@ -152,11 +152,11 @@ public class CardService {
                     TransactionItem.createDepositItem(transaction, merchantAccount, command.amount(), 2);
                     transactionRepository.save(transaction);
 
-                    Payment payment = Payment.create(card, merchant, merchantAccount, transaction, command.amount(), command.idempotencyKey());
+                    Payment payment = Payment.create(card, userAccount, merchant, merchantAccount, transaction, command.amount(), command.idempotencyKey());
                     paymentRepository.save(payment);
 
                     // 5. 신규 처리이므로 isRepeated = false
-                    return cardMapper.toPaymentResult(payment, transaction, card, userAccount.getBalance(), merchant.getMerchantName(), false);
+                    return cardMapper.toPaymentResult(payment, transaction, card, userAccount, merchant.getMerchantName(), false);
                 });
     }
 
@@ -195,8 +195,25 @@ public class CardService {
                 });
     }
 
-    // --- Private Helper Methods ---
+    /**
+     * 결제 내역 조회
+     */
+    public List<CardUsecase.PaymentSummary> getPayments(String memberExternalId) {
+        // 2. 카드 결제 내역 조회
+        List<Payment> payments = paymentRepository.findAllByMemberExternalId(memberExternalId);
 
+        // 3. 결과 매핑 후 반환
+        return payments.stream()
+                .map(payment -> {
+                    Card card = payment.getCard();
+                    String merchantName = payment.getMerchant().getMerchantName();
+                    return cardMapper.toPaymentSummary(payment, card, merchantName);
+                })
+                .toList();
+
+    }
+
+    // --- Private Helper Methods ---
     private Card findActiveCardWithOwnership(String cardExternalId, String externalId) {
         Card card = findActiveCard(cardExternalId);
         if (!card.getAccount().getMember().getExternalId().equals(externalId)) {

@@ -17,13 +17,15 @@ public interface CardMapper {
     @Mapping(target = "transactionExternalId", source = "transaction.externalId")
     @Mapping(target = "maskedCardNumber", expression = "java(maskCardNumber(card.getCardNumber()))")
     @Mapping(target = "status", source = "payment.status")
+    @Mapping(target = "balanceAfter", source = "cardAccount.balance")
+    @Mapping(target = "accountNumber", source = "cardAccount.accountNumber")
     @Mapping(target = "amount", source = "payment.amount")
     @Mapping(target = "createdAt", source = "payment.createdAt")
     CardUsecase.CardPaymentResult toPaymentResult(
             Payment payment,
             Transaction transaction,
             Card card,
-            Long balanceAfter,
+            Account cardAccount,
             String merchantName,
             boolean isRepeated
     );
@@ -42,4 +44,14 @@ public interface CardMapper {
         if (cardNumber == null || cardNumber.length() < 16) return cardNumber;
         return cardNumber.substring(0, 4) + "-****-****-" + cardNumber.substring(12);
     }
+
+    @Mapping(target = "paymentExternalId", source = "payment.externalId")
+    @Mapping(target = "maskedCardNumber", expression = "java(maskCardNumber(card.getCardNumber()))")
+    @Mapping(target = "status", source = "payment.status")
+    @Mapping(target = "createdAt", source = "payment.createdAt")
+    CardUsecase.PaymentSummary toPaymentSummary(
+            Payment payment,
+            Card card,
+            String merchantName
+    );
 }

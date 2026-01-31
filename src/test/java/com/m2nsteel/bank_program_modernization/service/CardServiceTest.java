@@ -196,5 +196,27 @@ class CardServiceTest {
             assertThat(cardDetail.externalId()).isEqualTo(card.externalId());
             assertThat(cardDetail.cardType()).isEqualTo("CHECK");
         }
+
+        @Test
+        @DisplayName("성공: 결제 내역 조회")
+        void get_Card_Payments_Success() {
+            // Given: 카드 발급 및 결제
+            var card = cardService.issueCard(new CardUsecase.IssueCardCommand(
+                    userAccountNo, PASSWORD, CARD_PASS, "CHECK"), memberId);
+
+            var payCmd1 = new CardUsecase.CardPaymentCommand(
+                    card.externalId(), 8000L, CARD_PASS, "123-45-67890", "idemp-query-pay-1");
+            var payCmd2 = new CardUsecase.CardPaymentCommand(
+                    card.externalId(), 12000L, CARD_PASS, "123-45-67890", "idemp-query-pay-2");
+
+            cardService.pay(payCmd1, memberId);
+            cardService.pay(payCmd2, memberId);
+
+            // When: 카드 결제 내역 조회
+            var payments = cardService.getPayments(memberId);
+
+            // Then: 2건의 결제 내역이 조회됨
+            assertThat(payments.size()).isEqualTo(2);
+        }
     }
 }

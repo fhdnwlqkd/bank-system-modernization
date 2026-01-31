@@ -58,10 +58,21 @@ public class CardUsecase {
             String transactionExternalId,
             String maskedCardNumber,
             Long amount,
+            String accountNumber,
             Long balanceAfter,
             String merchantName,
             String status,
             boolean isRepeated,
+            LocalDateTime createdAt
+    ) {}
+
+    public record PaymentSummary(
+            String paymentExternalId,
+            String maskedCardNumber,
+            Long amount,
+            Long balanceAfter,
+            String merchantName,
+            String status,
             LocalDateTime createdAt
     ) {}
 

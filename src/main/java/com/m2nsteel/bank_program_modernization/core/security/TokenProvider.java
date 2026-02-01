@@ -1,8 +1,12 @@
 package com.m2nsteel.bank_program_modernization.core.security;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.MalformedJwtException;
 import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.security.SignatureException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
@@ -11,6 +15,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.Date;
 
 @Component
+@Slf4j
 public class TokenProvider {
 
     private final SecretKey signingKey;
@@ -27,11 +32,10 @@ public class TokenProvider {
         this.refreshTokenExpirationTime = refreshTokenExpirationTime;
     }
 
-    public String createAccessToken(String loginId, String externalId, String role) {
+    public String createAccessToken(String externalId, String role) {
         Date now = new Date();
         return Jwts.builder()
-                .subject(loginId)
-                .claim("externalId", externalId)
+                .subject(externalId)
                 .claim("role", role)
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + accessTokenExpirationTime))
@@ -39,10 +43,10 @@ public class TokenProvider {
                 .compact();
     }
 
-    public String createRefreshToken(String loginId) {
+    public String createRefreshToken(String externalId) {
         Date now = new Date();
         return Jwts.builder()
-                .subject(loginId)
+                .subject(externalId)
                 .issuedAt(now)
                 .expiration(new Date(now.getTime() + refreshTokenExpirationTime))
                 .signWith(signingKey)
@@ -57,20 +61,21 @@ public class TokenProvider {
                 .getPayload();
     }
 
-    public String getLoginIdFromToken(String token) {
-        return getClaims(token).getSubject();
-    }
-
     public String getExternalIdFromToken(String token) {
-        return getClaims(token).get("externalId", String.class);
+        return getClaims(token).getSubject();
     }
 
     public boolean validateToken(String token) {
         try {
             getClaims(token);
             return true;
+        } catch (ExpiredJwtException e) {
+            log.info("만료된 토큰입니다.");
+        } catch (SignatureException | MalformedJwtException e) {
+            log.error("잘못된 서명 또는 변조된 토큰입니다!");
         } catch (Exception e) {
-            return false;
+            log.error("토큰 검증 중 알 수 없는 오류 발생: {}", e.getMessage());
         }
+        return false;
     }
 }

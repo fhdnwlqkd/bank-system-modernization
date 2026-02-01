@@ -10,6 +10,7 @@ public interface MemberDtoMapper {
     MemberUsecase.MemberSignUpCommand toCommand(MemberDto.MemberSignUpRequest request);
     MemberUsecase.MerchantSignUpCommand toCommand(MemberDto.MerchantSignUpRequest request);
     MemberUsecase.AdminSignUpCommand toCommand(MemberDto.AdminSignUpRequest request);
+    MemberUsecase.MemberUpdateCommand toCommand(MemberDto.MemberUpdateRequest request);
 
     MemberDto.MemberResponse from(MemberUsecase.MemberResult result);
     MemberDto.MerchantSignUpResponse from(MemberUsecase.MerchantSignUpResult result);

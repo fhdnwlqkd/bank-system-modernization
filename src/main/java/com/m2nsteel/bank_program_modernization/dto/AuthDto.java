@@ -23,4 +23,13 @@ public class AuthDto {
                     example = "defGhiJklMnoPqrStuVwxYz123456...")
             String refreshToken
     ) {}
+
+    @Schema(description = "패스워드 재설정 요청")
+    public record PasswordResetRequest(
+            @Schema(description = "기존 비밀번호", example = "OldPassword123!")
+            @NotBlank String oldPassword,
+
+            @Schema(description = "새 비밀번호", example = "NewPassword123!")
+            @NotBlank String newPassword
+    ) {}
 }

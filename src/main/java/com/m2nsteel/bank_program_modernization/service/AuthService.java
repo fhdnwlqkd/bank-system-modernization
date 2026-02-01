@@ -39,9 +39,8 @@ public class AuthService {
         }
 
         // 3. 토큰 생성
-        String accessToken = tokenProvider.createAccessToken(
-                member.getLoginId(), member.getExternalId(), member.getRole().name());
-        String refreshToken = tokenProvider.createRefreshToken(member.getLoginId());
+        String accessToken = tokenProvider.createAccessToken(member.getExternalId(), member.getRole().name());
+        String refreshToken = tokenProvider.createRefreshToken(member.getExternalId());
 
         return new AuthUsecase.TokenResult(accessToken, refreshToken);
     }

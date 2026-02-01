@@ -1,11 +1,11 @@
-package com.m2nsteel.bank_program_modernization.core.exception;
+package com.m2nsteel.bank_program_modernization.core.api;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Schema(description = "에러 응답 규격 (BusinessException 발생 시 반환)")
-public record ErrorResponse(
+public record ExceptionResponse(
         @Schema(description = "에러 식별 코드", example = "M001")
         String code,
 

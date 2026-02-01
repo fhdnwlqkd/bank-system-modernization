@@ -53,7 +53,7 @@ public class SecurityConfig {
     }
 
     /*
-        빈 등록 차단 (수동 등록했기 떄문)
+        빈 등록 차단
      */
     @Bean
     @NullMarked

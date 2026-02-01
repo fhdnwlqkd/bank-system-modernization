@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
+import org.jspecify.annotations.Nullable;
 
 import java.time.LocalDateTime;
 
@@ -75,7 +76,18 @@ public class MemberDto {
             @NotBlank String department
     ) {}
 
-    @Schema(description = "일반 회원가입 응답")
+    @Schema(description = "내 정보 수정 요청 객체 (일반 회원용)")
+    public record MemberUpdateRequest(
+            @Schema(description = "수정할 이름", example = "홍길동", nullable = true)
+            @Nullable
+            String name,
+
+            @Schema(description = "수정할 연락처 (하이픈 포함)", example = "010-9876-5432", nullable = true)
+            @Nullable
+            String contact
+    ) {}
+
+    @Schema(description = "일반 회원 응답")
     public record MemberResponse(
             @Schema(description = "외부 노출용 식별자", example = "mem_8f2b3c4d")
             String externalId,

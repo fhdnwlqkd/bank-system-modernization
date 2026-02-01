@@ -227,12 +227,12 @@ public class MemberService implements UserDetailsService {
     }
 
     @Override
-    public UserDetails loadUserByUsername(String loginId) throws UsernameNotFoundException {
-        Member member = memberRepository.findByLoginId(loginId)
-                .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + loginId));
+    public UserDetails loadUserByUsername(String externalId) throws UsernameNotFoundException {
+        Member member = memberRepository.findByExternalId(externalId)
+                .orElseThrow(() -> new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + externalId));
 
         return User.builder()
-                .username(member.getLoginId())
+                .username(member.getExternalId())
                 .password(member.getPassword())
                 .roles(member.getRole().name())
                 .build();

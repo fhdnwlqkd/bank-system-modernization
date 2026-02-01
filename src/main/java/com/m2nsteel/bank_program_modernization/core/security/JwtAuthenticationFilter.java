@@ -35,29 +35,24 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // 1. 헤더에서 토큰 추출
         String token = resolveToken(request);
 
-        // 2. 토큰 유효성 검사
-        if (tokenProvider.validateToken(token)) {
-            // 3. 토큰에서 사용자 정보(loginId) 추출
-            String loginId = tokenProvider.getLoginIdFromToken(token);
+        // 2. 토큰이 존재할 때만 유효성 검사 진행
+        if (StringUtils.hasText(token) && tokenProvider.validateToken(token)) {
+            String externalId = tokenProvider.getExternalIdFromToken(token);
+            UserDetails userDetails = userDetailsService.loadUserByUsername(externalId);
 
-            // 4. DB에서 사용자 세부 정보 로드
-            UserDetails userDetails = userDetailsService.loadUserByUsername(loginId);
-
-            // 5. Spring Security 인증 객체 생성
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
-            // 6. SecurityContext에 인증 정보 저장
             SecurityContextHolder.getContext().setAuthentication(authentication);
-
-            log.debug("Security Context에 '{}' 인증 정보를 저장했습니다.", loginId);
+            log.debug("Security Context에 '{}' 인증 정보를 저장했습니다.", externalId);
         }
 
-        filterChain.doFilter(request, response); // 다음 필터로 넘김
+        // 토큰이 없거나 유효하지 않아도 일단 다음 필터로 넘깁니다.
+        filterChain.doFilter(request, response);
     }
 
-    /*
-        HTTP 요청에서 JWT 토큰을 추출하는 메서드
+    /**
+     * HTTP 요청에서 JWT 토큰을 추출하는 메서드
      */
     @Nullable
     private String resolveToken(HttpServletRequest request) {

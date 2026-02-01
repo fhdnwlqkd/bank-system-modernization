@@ -75,17 +75,15 @@ class TransactionServiceTest {
         var firstResult = transactionService.transfer(command, senderExternalId);
 
         // 3. Then: 첫 요청 결과 검증
-        assertThat(firstResult.isRepeated()).isFalse();
         assertThat(firstResult.amount()).isEqualTo(5000L);
 
         // 4. When: 동일한 키로 중복 이체 요청 (Idempotency 재시도)
-        var secondResult = transactionService.transfer(command, senderExternalId);
+        assertThatThrownBy(() -> {
+            transactionService.transfer(command, senderExternalId);
+        }).isInstanceOf(BusinessException.class)
+          .hasFieldOrPropertyWithValue("errorCode", ErrorCode.REPEATED_REQUEST);
 
-        // 5. Then: 중복 요청 결과 검증
-        assertThat(secondResult.isRepeated()).isTrue();
-        assertThat(secondResult.txExternalId()).isEqualTo(firstResult.txExternalId());
-
-        // 6. Then: 최종 원장 잔액 확인
+        // 5. Then: 최종 원장 잔액 확인
         Account senderFinal = accountRepository.findByAccountNumber(senderAccountNo).orElseThrow();
         Account receiverFinal = accountRepository.findByAccountNumber(receiverAccountNo).orElseThrow();
 
@@ -107,7 +105,6 @@ class TransactionServiceTest {
 
         // 3. Then: 결과 확인
         assertThat(result.amount()).isEqualTo(3000L);
-        assertThat(result.isRepeated()).isFalse();
 
         Account finalAcc = accountRepository.findByAccountNumber(senderAccountNo).orElseThrow();
         assertThat(finalAcc.getBalance()).isEqualTo(7000L);

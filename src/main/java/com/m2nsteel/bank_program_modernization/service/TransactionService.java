@@ -32,23 +32,23 @@ public class TransactionService {
      */
     @Transactional
     public TransactionUsecase.GeneralResult deposit(TransactionUsecase.DepositCommand command, String memberExternalId) {
-        // 1. 멱등성 검증: 이미 처리된 요청이면 기존 결과 반환
-        return transactionRepository.findByIdempotencyKey(command.idempotencyKey())
-                .map(tx -> transactionMapper.toResult(tx, tx.getItems().getFirst(), true))
-                .orElseGet(() -> {
-                    // 2. 검증 및 조회 (나의 계좌인지 확인)
-                    Account account = findActiveAccountWithOwnership(command.accountNumber(), memberExternalId);
+        // 1. 멱등성 검증
+        if(transactionRepository.existsByIdempotencyKey(command.idempotencyKey())){
+            throw new BusinessException(ErrorCode.REPEATED_REQUEST);
+        }
 
-                    // 3. 비즈니스 로직 수행
-                    account.deposit(command.amount());
+        // 2. 검증 및 조회 (나의 계좌인지 확인)
+        Account account = findActiveAccountWithOwnership(command.accountNumber(), memberExternalId);
 
-                    // 4. 기록 저장
-                    Transaction transaction = Transaction.createDeposit(command.amount(), command.idempotencyKey());
-                    TransactionItem item = TransactionItem.createDepositItem(transaction, account, command.amount(), 1);
+        // 3. 비즈니스 로직 수행
+        account.deposit(command.amount());
 
-                    transactionRepository.save(transaction);
-                    return transactionMapper.toResult(transaction, item, false);
-                });
+        // 4. 기록 저장
+        Transaction transaction = Transaction.createDeposit(command.amount(), command.idempotencyKey());
+        TransactionItem item = TransactionItem.createDepositItem(transaction, account, command.amount(), 1);
+
+        transactionRepository.save(transaction);
+        return transactionMapper.toResult(transaction, item);
     }
 
     /**
@@ -57,23 +57,23 @@ public class TransactionService {
     @Transactional
     public TransactionUsecase.GeneralResult withdraw(TransactionUsecase.WithdrawCommand command, String memberExternalId) {
         // 1. 멱등성 검증
-        return transactionRepository.findByIdempotencyKey(command.idempotencyKey())
-                .map(tx -> transactionMapper.toResult(tx, tx.getItems().getFirst(), true))
-                .orElseGet(() -> {
-                    // 2. 검증 및 조회
-                    Account account = findActiveAccountWithOwnership(command.accountNumber(), memberExternalId);
-                    verifyAccountPassword(command.accountPassword(), account.getAccountPassword());
+        if(transactionRepository.existsByIdempotencyKey(command.idempotencyKey())){
+            throw new BusinessException(ErrorCode.REPEATED_REQUEST);
+        }
 
-                    // 3. 비즈니스 로직 (잔액 부족 시 엔티티 내부에서 Exception 발생)
-                    account.withdraw(command.amount());
+        // 2. 검증 및 조회
+        Account account = findActiveAccountWithOwnership(command.accountNumber(), memberExternalId);
+        verifyAccountPassword(command.accountPassword(), account.getAccountPassword());
 
-                    // 4. 기록 저장
-                    Transaction transaction = Transaction.createWithdrawal(command.amount(), command.idempotencyKey());
-                    TransactionItem item = TransactionItem.createWithdrawalItem(transaction, account, command.amount(), 1);
+        // 3. 비즈니스 로직 (잔액 부족 시 엔티티 내부에서 Exception 발생)
+        account.withdraw(command.amount());
 
-                    transactionRepository.save(transaction);
-                    return transactionMapper.toResult(transaction, item, false);
-                });
+        // 4. 기록 저장
+        Transaction transaction = Transaction.createWithdrawal(command.amount(), command.idempotencyKey());
+        TransactionItem item = TransactionItem.createWithdrawalItem(transaction, account, command.amount(), 1);
+
+        transactionRepository.save(transaction);
+        return transactionMapper.toResult(transaction, item);
     }
 
     /**
@@ -82,31 +82,26 @@ public class TransactionService {
     @Transactional
     public TransactionUsecase.TransferResult transfer(TransactionUsecase.TransferCommand command, String fromMemberExternalId) {
         // 1. 멱등성 검증
-        return transactionRepository.findByIdempotencyKey(command.idempotencyKey())
-                .map(tx -> {
-                    // 0번이 출금(From), 1번이 입금(To).
-                    TransactionItem fromItem = tx.getItems().getFirst();
-                    TransactionItem toItem = tx.getItems().getLast();
-                    return transactionMapper.toTransferResult(tx, fromItem, toItem, true);
-                })
-                .orElseGet(() -> {
-                    // 2. 검증 및 조회 (출금 계좌 소유권 확인 & 입금 계좌 활성 확인)
-                    Account fromAccount = findActiveAccountWithOwnership(command.fromAccountNumber(), fromMemberExternalId);
-                    Account toAccount = findActiveAccount(command.toAccountNumber());
-                    verifyAccountPassword(command.accountPassword(), fromAccount.getAccountPassword());
+        if(transactionRepository.existsByIdempotencyKey(command.idempotencyKey())){
+            throw new BusinessException(ErrorCode.REPEATED_REQUEST);
+        }
 
-                    // 3. 양측 계좌 잔액 업데이트
-                    fromAccount.withdraw(command.amount());
-                    toAccount.deposit(command.amount());
+        // 2. 검증 및 조회 (출금 계좌 소유권 확인 & 입금 계좌 활성 확인)
+        Account fromAccount = findActiveAccountWithOwnership(command.fromAccountNumber(), fromMemberExternalId);
+        Account toAccount = findActiveAccount(command.toAccountNumber());
+        verifyAccountPassword(command.accountPassword(), fromAccount.getAccountPassword());
 
-                    // 4. 기록 저장
-                    Transaction transaction = Transaction.createTransfer(command.amount(), command.idempotencyKey());
-                    TransactionItem withdrawItem = TransactionItem.createWithdrawalItem(transaction, fromAccount, command.amount(), 1);
-                    TransactionItem depositItem = TransactionItem.createDepositItem(transaction, toAccount, command.amount(), 2);
+        // 3. 양측 계좌 잔액 업데이트
+        fromAccount.withdraw(command.amount());
+        toAccount.deposit(command.amount());
 
-                    transactionRepository.save(transaction);
-                    return transactionMapper.toTransferResult(transaction, withdrawItem, depositItem, false);
-                });
+        // 4. 기록 저장
+        Transaction transaction = Transaction.createTransfer(command.amount(), command.idempotencyKey());
+        TransactionItem withdrawItem = TransactionItem.createWithdrawalItem(transaction, fromAccount, command.amount(), 1);
+        TransactionItem depositItem = TransactionItem.createDepositItem(transaction, toAccount, command.amount(), 2);
+
+        transactionRepository.save(transaction);
+        return transactionMapper.toTransferResult(transaction, withdrawItem, depositItem);
     }
 
     // --- Private Helpers ---

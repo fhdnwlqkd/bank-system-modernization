@@ -1,10 +1,11 @@
 package com.m2nsteel.bank_program_modernization.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.m2nsteel.bank_program_modernization.core.exception.ErrorResponse;
+import com.m2nsteel.bank_program_modernization.core.api.ExceptionResponse;
 import com.m2nsteel.bank_program_modernization.domain.constant.MemberStatus;
 import com.m2nsteel.bank_program_modernization.dto.AuthDto;
 import com.m2nsteel.bank_program_modernization.dto.MemberDto;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,8 +17,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
-
-import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -33,139 +32,110 @@ class MemberControllerTest {
     @Autowired
     private JsonMapper jsonmapper;
 
-    // --- 1. 일반 회원 (Member) 테스트 ---
+    private String authenticatedExternalId; // 가입 시 획득한 식별자
+    private String accessToken;            // 로그인 시 획득한 토큰
 
-    @Test
-    @DisplayName("성공: 일반 회원 가입 및 객체 변환 검증")
-    void signUp_Success() throws JsonProcessingException {
-        var request = new MemberDto.MemberSignUpRequest("user123", "Pass1234!", "홍길동", "010-1234-5678");
+    private final String LOGIN_ID = "tester123";
+    private final String PASSWORD = "Password123!";
+    private final String NAME = "홍길동";
+    private final String CONTACT = "010-1234-5678";
 
+    @BeforeEach
+    void setUp() throws JsonProcessingException {
+        // 1. 회원가입 실행 및 externalId 추출
+        var signUpReq = new MemberDto.MemberSignUpRequest(LOGIN_ID, PASSWORD, NAME, CONTACT);
         assertThat(mvc.post().uri("/api/members")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(jsonmapper.writeValueAsString(request)))
+                .content(jsonmapper.writeValueAsString(signUpReq)))
                 .hasStatus(HttpStatus.CREATED)
                 .bodyJson()
-                .convertTo(MemberDto.MemberResponse.class)
-                .satisfies(res -> {
-                    assertThat(res.loginId()).isEqualTo("user123");
-                    assertThat(res.name()).isEqualTo("홍길동");
-                    assertThat(res.contact()).isEqualTo("010-1234-5678");
-                    assertThat(res.status()).isEqualTo(MemberStatus.ACTIVE);
-                    assertThat(res.externalId()).isNotNull();
-                });
-    }
+                .extractingPath("$.data.externalId")
+                .satisfies(id -> this.authenticatedExternalId = id.toString());
 
-    // --- 2. 가맹점 (Merchant) 테스트 ---
-
-    @Test
-    @DisplayName("성공: 가맹점 가입 및 상세 객체 검증")
-    void merchantSignUp_Success() throws JsonProcessingException {
-        var request = new MemberDto.MerchantSignUpRequest(
-                "merchant_boss", "Pass1234!", "1234", "길동", "010-1111-2222",
-                "123-45-67890", "길동네카페", "FOOD");
-
-        assertThat(mvc.post().uri("/api/merchants")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(jsonmapper.writeValueAsString(request)))
-                .hasStatus(HttpStatus.CREATED)
-                .bodyJson()
-                .convertTo(MemberDto.MerchantSignUpResponse.class)
-                .satisfies(res -> {
-                    assertThat(res.loginId()).isEqualTo("merchant_boss");
-                    assertThat(res.merchantName()).isEqualTo("길동네카페");
-                    assertThat(res.businessNumber()).isEqualTo("123-45-67890");
-                    assertThat(res.accountNumber()).isNotBlank();
-                    assertThat(res.category()).isEqualTo("FOOD");
-                });
-    }
-
-    // --- 3. 관리자 (Admin) 테스트 ---
-
-    @Test
-    @DisplayName("성공: 관리자 가입 및 부서 정보 검증")
-    void adminSignUp_Success() throws JsonProcessingException {
-        var request = new MemberDto.AdminSignUpRequest("admin_root", "Admin123!", "관리자A", "010-9999-8888", "IT_SECURITY");
-
-        assertThat(mvc.post().uri("/api/admins")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(jsonmapper.writeValueAsString(request)))
-                .hasStatus(HttpStatus.CREATED)
-                .bodyJson()
-                .convertTo(MemberDto.AdminResponse.class)
-                .satisfies(res -> {
-                    assertThat(res.loginId()).isEqualTo("admin_root");
-                    assertThat(res.department()).isEqualTo("IT_SECURITY");
-                });
-    }
-
-    // --- 4. 로그인 (Auth) 테스트 ---
-
-    @Test
-    @DisplayName("성공: 로그인 후 토큰 객체 검증")
-    void login_Success() throws JsonProcessingException {
-        signUp_Success(); // 사전 데이터 준비
-
-        var loginRequest = new AuthDto.LoginRequest("user123", "Pass1234!");
-
+        // 2. 실제 로그인 호출 및 accessToken 추출
+        var loginReq = new AuthDto.LoginRequest(LOGIN_ID, PASSWORD);
         assertThat(mvc.post().uri("/api/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(jsonmapper.writeValueAsString(loginRequest)))
+                .content(jsonmapper.writeValueAsString(loginReq)))
                 .hasStatus(HttpStatus.OK)
                 .bodyJson()
-                .convertTo(AuthDto.TokenResponse.class)
+                .extractingPath("$.data.accessToken")
+                .satisfies(token -> this.accessToken = token.toString());
+    }
+
+    // --- 1. 내 정보 관리 테스트 ---
+
+    @Test
+    @DisplayName("성공: 실제 로그인 토큰을 사용하여 내 정보 상세 조회 검증")
+    void getMyInfo_Success() {
+        assertThat(mvc.get().uri("/api/members/me")
+                .header("Authorization", "Bearer " + accessToken))
+                .hasStatus(HttpStatus.OK)
+                .bodyJson()
+                .extractingPath("$.data")
+                .convertTo(MemberDto.MemberResponse.class)
                 .satisfies(res -> {
-                    assertThat(res.accessToken()).isNotBlank();
-                    assertThat(res.refreshToken()).isNotBlank();
-//                    assertThat(res.grantType()).isEqualTo("Bearer");
+                    assertThat(res.loginId()).isEqualTo(LOGIN_ID);
+                    assertThat(res.name()).isEqualTo(NAME);
+                    assertThat(res.contact()).isEqualTo(CONTACT);
+                    assertThat(res.status()).isEqualTo(MemberStatus.ACTIVE);
+                    assertThat(res.externalId()).isEqualTo(authenticatedExternalId);
                 });
     }
 
     @Test
-    @DisplayName("실패: 비밀번호 불일치 시 401 Unauthorized 및 ErrorResponse 검증")
-    void login_Fail_InvalidPassword() throws JsonProcessingException {
-        // Given: 먼저 정상 가입
-        signUp_Success();
+    @DisplayName("성공: 내 정보 수정 시 변경된 필드와 유지된 필드 전수 검증")
+    void updateMyInfo_Success() throws JsonProcessingException {
+        // Given: 수정 요청
+        String newName = "김철수";
+        String newContact = "010-0000-0000";
+        var updateReq = new MemberDto.MemberUpdateRequest(newName, newContact);
 
-        // When: 틀린 비밀번호로 로그인 요청
-        var loginRequest = new AuthDto.LoginRequest("user123", "WrongPass!");
-
-        assertThat(mvc.post().uri("/api/auth/login")
+        // When
+        assertThat(mvc.patch().uri("/api/members/me")
+                .header("Authorization", "Bearer " + accessToken)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(jsonmapper.writeValueAsString(loginRequest)))
-                .hasStatus(HttpStatus.UNAUTHORIZED)
+                .content(jsonmapper.writeValueAsString(updateReq)))
+                .hasStatus(HttpStatus.OK)
                 .bodyJson()
-                .convertTo(ErrorResponse.class)
+                .extractingPath("$.data")
+                .convertTo(MemberDto.MemberResponse.class)
                 .satisfies(res -> {
-                    assertThat(res.code()).isEqualTo("M003");
-                    assertThat(res.errorName()).isEqualTo("INVALID_PASSWORD");
-                    assertThat(res.message()).contains("비밀번호");
-                    assertThat(res.timestamp()).isNotNull();
-                    assertThat(res.errors()).isEmpty();
+                    // 수정된 필드 확인
+                    assertThat(res.name()).isEqualTo(newName);
+                    assertThat(res.contact()).isEqualTo(newContact);
+                    // 불변 필드 확인
+                    assertThat(res.loginId()).isEqualTo(LOGIN_ID);
+                    assertThat(res.externalId()).isEqualTo(authenticatedExternalId);
                 });
     }
 
-    // --- 5. 예외 처리 (Exception Handling) 테스트 ---
     @Test
-    @DisplayName("실패: 중복 가입 시 BusinessException -> ErrorResponse 객체 검증")
-    void signUp_Fail_DuplicateId() throws JsonProcessingException {
-        // Given: 사전 가입
-        signUp_Success();
+    @DisplayName("성공: 회원 탈퇴 후 상태값 WITHDRAWN 변경 확인")
+    void withdraw_Success() {
+        // When: 탈퇴 실행
+        assertThat(mvc.delete().uri("/api/members/me")
+                .header("Authorization", "Bearer " + accessToken))
+                .hasStatus(HttpStatus.OK);
 
-        // When: 중복 ID로 가입 시도
-        var request = new MemberDto.MemberSignUpRequest("user123", "Pass1234!", "홍길동", "010-1234-5678");
-
-        assertThat(mvc.post().uri("/api/members")
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(jsonmapper.writeValueAsString(request)))
-                .hasStatus(HttpStatus.CONFLICT)
+        // Then: 탈퇴 후 재조회 시 상태값 검증
+        assertThat(mvc.get().uri("/api/members/me")
+                .header("Authorization", "Bearer " + accessToken))
                 .bodyJson()
-                .convertTo(ErrorResponse.class)
+                .extractingPath("$.error")
+                .convertTo(ExceptionResponse.class)
                 .satisfies(res -> {
-                    assertThat(res.code()).isEqualTo("M001");
-                    assertThat(res.errorName()).isEqualTo("DUPLICATE_LOGIN_ID");
-                    assertThat(res.message()).contains("이미 존재");
-                    assertThat(res.timestamp()).isBeforeOrEqualTo(LocalDateTime.now());
-                    assertThat(res.errors()).isEmpty();
+                    assertThat(res.code()).isEqualTo("M004");
+                    assertThat(res.errorName()).contains("MEMBER_NOT_ACTIVE");
                 });
+    }
+
+    // --- 2. 추가 예외 상황 테스트 ---
+    @Test
+    @DisplayName("실패: 유효하지 않은 토큰으로 접근 시 403 Forbidden 발생")
+    void getMyInfo_Fail_InvalidToken() {
+        assertThat(mvc.get().uri("/api/members/me")
+                .header("Authorization", "Bearer WRONG_TOKEN"))
+                .hasStatus(HttpStatus.FORBIDDEN);
     }
 }

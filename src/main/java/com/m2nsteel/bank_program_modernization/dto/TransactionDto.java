@@ -1,12 +1,15 @@
 package com.m2nsteel.bank_program_modernization.dto;
 
+import com.m2nsteel.bank_program_modernization.domain.constant.TransactionType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Positive;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.format.annotation.DateTimeFormat;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @NullMarked
@@ -115,6 +118,54 @@ public class TransactionDto {
 
             @Schema(description = "거래 상태", example = "SUCCESS")
             String status,
+
+            @Schema(description = "거래 일시")
+            LocalDateTime createdAt
+    ) {}
+
+    @Schema(description = "거래 내역 조회 조건")
+    public record TransactionSearchRequest(
+            @NotNull
+            @Schema(description = "계좌 식별자 (UUID)", example = "acc-1234-5678", requiredMode = Schema.RequiredMode.REQUIRED)
+            String accountExternalId,
+
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            @Schema(description = "조회 시작일", example = "2026-01-01")
+            LocalDate startDate,
+
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE)
+            @Schema(description = "조회 종료일", example = "2026-02-01")
+            LocalDate endDate,
+
+            @Schema(description = "거래 유형 (DEPOSIT, WITHDRAWAL, TRANSFER)", example = "TRANSFER")
+            TransactionType type,
+
+            @Schema(description = "최소 금액", example = "1000")
+            Long minAmount,
+
+            @Schema(description = "최대 금액", example = "100000")
+            Long maxAmount,
+
+            @Schema(description = "마지막으로 조회된 ID (커서용)", example = "100")
+            Long lastId
+    ) {}
+
+    @Schema(description = "거래 내역 응답")
+    public record TransactionHistoryResponse(
+            @Schema(description = "거래 식별자", example = "tx-abcd-efgh")
+            String txExternalId,
+
+            @Schema(description = "거래 유형", example = "WITHDRAWAL")
+            String type,
+
+            @Schema(description = "거래 총액 (절대값)", example = "50000")
+            Long amount,
+
+            @Schema(description = "실제 변동 금액 (입금 +, 출금 -)", example = "-50000")
+            Long delta,
+
+            @Schema(description = "거래 후 잔액", example = "150000")
+            Long balanceAfter,
 
             @Schema(description = "거래 일시")
             LocalDateTime createdAt

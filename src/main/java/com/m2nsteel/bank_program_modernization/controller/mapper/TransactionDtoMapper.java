@@ -10,6 +10,8 @@ public interface TransactionDtoMapper {
     TransactionUsecase.DepositCommand toCommand(TransactionDto.DepositRequest request);
     TransactionUsecase.WithdrawCommand toCommand(TransactionDto.WithdrawRequest request);
     TransactionUsecase.TransferCommand toCommand(TransactionDto.TransferRequest request);
+    TransactionUsecase.TransactionSearchCondition toCondition(TransactionDto.TransactionSearchRequest request);
     TransactionDto.GeneralResponse from(TransactionUsecase.GeneralResult result);
     TransactionDto.TransferResponse from(TransactionUsecase.TransferResult result);
+    TransactionDto.TransactionHistoryResponse from(TransactionUsecase.TransactionHistoryResult result);
 }

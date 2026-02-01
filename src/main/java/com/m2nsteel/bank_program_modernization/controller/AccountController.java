@@ -78,10 +78,10 @@ public class AccountController {
      * 계좌 비밀번호 변경
      */
     @Operation(summary = "계좌 비밀번호 변경", description = "기존 비밀번호 확인 후 새로운 비밀번호로 변경합니다.")
-    @PatchMapping("accounts/{accountExternalId}/password")
+    @PatchMapping("accounts/{accountId}/password")
     public ResponseEntity<ApiResponse<AccountDto.AccountResponse>> changePassword(
             @Parameter(hidden = true) @AuthenticationPrincipal(expression = "username") String memberExternalId,
-            @PathVariable("accountExternalId") String accountExternalId, // 이름 명시 ㅋ
+            @PathVariable("accountId") String accountExternalId,
             @Valid @RequestBody AccountDto.AccountChangePasswordRequest request
     ) {
         // 1. DTO -> Command 변환

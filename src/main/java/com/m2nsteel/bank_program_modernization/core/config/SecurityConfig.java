@@ -35,14 +35,20 @@ public class SecurityConfig {
 
                 // 3. 요청 권한 설정
                 .authorizeHttpRequests(auth -> auth
-                        // 회원가입과 로그인은 누구에게나 허용
-                        .requestMatchers(HttpMethod.POST, "/api/members").permitAll()    // 일반 회원가입
-                        .requestMatchers(HttpMethod.POST, "/api/merchants").permitAll()  // 가맹점 가입
-                        .requestMatchers(HttpMethod.POST, "/api/admins").permitAll()  // 가맹점 가입
-                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll() // 로그인(토큰 생성)
+                        // 1. 누구나 접근 허용 (회원가입, 로그인, Swagger)
+                        .requestMatchers(HttpMethod.POST, "/api/members").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/merchants").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/admins").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
-                        // 그 외 모든 요청은 인증 필요
+                        // 2. 가맹점 전용 API: MERCHANT 또는 ADMIN만 접근 가능
+                        .requestMatchers("/api/merchants/me/**").hasAnyRole("MERCHANT", "ADMIN")
+
+                        // 3. 관리자 전용 API: 오직 ADMIN만 접근 가능
+                        .requestMatchers("/api/admins/**").hasRole("ADMIN")
+
+                        // 4. 그 외 모든 요청은 인증된 사용자라면 누구나 가능
                         .anyRequest().authenticated()
                 )
 

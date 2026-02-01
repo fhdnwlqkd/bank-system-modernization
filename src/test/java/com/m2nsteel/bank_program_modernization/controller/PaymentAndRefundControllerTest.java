@@ -51,7 +51,7 @@ class PaymentAndRefundControllerTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        // 1. 서비스 레이어를 통해 테스트 데이터 준비 (제공해주신 CardServiceTest 방식 적용)
+        // 1. 서비스 레이어를 통해 테스트 데이터 준비
         var user = memberService.signUp(new MemberUsecase.MemberSignUpCommand(
                 "user1", PASSWORD, "사용자", "010-1111-2222"));
 

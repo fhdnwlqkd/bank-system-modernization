@@ -38,13 +38,13 @@ class MerchantSalesServiceTest {
         // 1. 가맹점주(Merchant Owner) 생성
         var owner = memberService.merchantSignUp(new MemberUsecase.MerchantSignUpCommand(
                 "owner1", "pass123!", "1234", "가맹점주", "010-1111-2222",
-                merchantBizNo, "민철네카페", "음식점"
+                merchantBizNo, "길동네카페", "음식점"
         ));
         merchantOwnerId = owner.externalId();
 
         // 2. 결제 유저(User) 생성 및 계좌 입금
         var user = memberService.signUp(new MemberUsecase.MemberSignUpCommand(
-                "user1", "pass123!", "서민철", "010-3333-4444"));
+                "user1", "pass123!", "홍길동", "010-3333-4444"));
         userId = user.externalId();
 
         var userAcc = accountService.createAccount(new AccountUsecase.AccountCreateCommand(userId, "pass123!"));

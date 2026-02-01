@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 public class MemberDto {
     @Schema(description = "일반 회원가입 요청")
     public record MemberSignUpRequest(
-            @Schema(description = "로그인 ID", example = "mincheol123")
+            @Schema(description = "로그인 ID", example = "gildong123")
             @NotBlank @Size(min = 4, max = 20)
             String loginId,
 
@@ -80,7 +80,7 @@ public class MemberDto {
             @Schema(description = "외부 노출용 식별자", example = "mem_8f2b3c4d")
             String externalId,
 
-            @Schema(description = "로그인 ID", example = "mincheol123")
+            @Schema(description = "로그인 ID", example = "gildong123")
             String loginId,
 
             @Schema(description = "사용자 이름", example = "홍길동")

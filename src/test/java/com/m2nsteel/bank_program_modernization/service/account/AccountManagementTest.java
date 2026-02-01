@@ -37,7 +37,7 @@ class AccountManagementTest {
     @BeforeEach
     void setUp() {
         // 1. Given: 사용자 가입 및 계좌 생성
-        var member = memberService.signUp(new MemberUsecase.MemberSignUpCommand("mincheol", "member-pass", "서민철", "010-1234-5678"));
+        var member = memberService.signUp(new MemberUsecase.MemberSignUpCommand("gildong", "member-pass", "홍길동", "010-1234-5678"));
         memberId = member.externalId();
 
         var account = accountService.createAccount(new AccountUsecase.AccountCreateCommand(memberId, OLD_PASS));

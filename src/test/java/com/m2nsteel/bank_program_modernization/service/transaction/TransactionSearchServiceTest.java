@@ -45,7 +45,7 @@ class TransactionSearchServiceTest {
     void setUp() {
         // 1. 송금인(User) 및 수취인(Receiver) 가입
         var user = memberService.signUp(new MemberUsecase.MemberSignUpCommand(
-                "user1", PASS, "서민철", "010-1111-2222"));
+                "user1", PASS, "홍길동", "010-1111-2222"));
         userId = user.externalId();
 
         var receiver = memberService.signUp(new MemberUsecase.MemberSignUpCommand(

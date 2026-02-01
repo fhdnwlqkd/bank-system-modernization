@@ -43,7 +43,7 @@ class RefundServiceTest {
     @BeforeEach
     void setUp() {
         // 1. Given: 사용자 및 계좌 준비
-        var user = memberService.signUp(new MemberUsecase.MemberSignUpCommand("mincheol", PASS, "서민철", "010-1234-5678"));
+        var user = memberService.signUp(new MemberUsecase.MemberSignUpCommand("gildong", PASS, "홍길동", "010-1234-5678"));
         memberId = user.externalId();
         var acc = accountService.createAccount(new AccountUsecase.AccountCreateCommand(memberId, PASS));
         userAccNo = acc.accountNumber();

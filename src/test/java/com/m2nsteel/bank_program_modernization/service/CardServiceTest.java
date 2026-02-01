@@ -98,13 +98,14 @@ class CardServiceTest {
         var payResult = cardService.pay(payCmd, memberId);
 
         // Then: 결제 성공 확인
-        assertThat(payResult.isRepeated()).isFalse();
         assertThat(payResult.amount()).isEqualTo(10000L);
         assertThat(accountRepository.findByAccountNumber(userAccountNo).get().getBalance()).isEqualTo(40000L);
 
         // Idempotency: 동일 키로 재결제 시도
-        var payRetryResult = cardService.pay(payCmd, memberId);
-        assertThat(payRetryResult.isRepeated()).isTrue();
+        assertThatThrownBy(() -> {
+            cardService.pay(payCmd, memberId);
+        }).isInstanceOf(BusinessException.class)
+          .hasFieldOrPropertyWithValue("errorCode", ErrorCode.REPEATED_REQUEST);
         assertThat(accountRepository.findByAccountNumber(userAccountNo).get().getBalance()).isEqualTo(40000L); // 잔액 불변
 
         // --- [Step 3: 카드 환불 (부분 환불)] ---
@@ -114,13 +115,14 @@ class CardServiceTest {
         var refundResult = cardService.refund(refundCmd);
 
         // Then: 환불 성공 확인 (사용자 잔액 복구)
-        assertThat(refundResult.isRepeated()).isFalse();
         assertThat(refundResult.refundAmount()).isEqualTo(4000L);
         assertThat(accountRepository.findByAccountNumber(userAccountNo).get().getBalance()).isEqualTo(44000L); // 40,000 + 4,000
 
         // Idempotency: 동일 키로 재환불 시도
-        var refundRetryResult = cardService.refund(refundCmd);
-        assertThat(refundRetryResult.isRepeated()).isTrue();
+        assertThatThrownBy(() -> {
+            cardService.refund(refundCmd);
+        }).isInstanceOf(BusinessException.class)
+          .hasFieldOrPropertyWithValue("errorCode", ErrorCode.REPEATED_REQUEST);
         assertThat(accountRepository.findByAccountNumber(userAccountNo).get().getBalance()).isEqualTo(44000L); // 잔액 불변
     }
 

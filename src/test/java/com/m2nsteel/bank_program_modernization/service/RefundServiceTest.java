@@ -73,7 +73,6 @@ class RefundServiceTest {
         var result = cardService.refund(refundCmd);
 
         // 3. Then: 결과 확인
-        assertThat(result.isRepeated()).isFalse();
         assertThat(result.refundAmount()).isEqualTo(4000L);
         assertThat(result.totalRefundedAmount()).isEqualTo(4000L);
         assertThat(result.remainingAmount()).isEqualTo(6000L); // 10,000 - 4,000
@@ -92,11 +91,11 @@ class RefundServiceTest {
         cardService.refund(refundCmd);
 
         // 2. When: 동일한 키로 2차 환불 요청
-        var secondResult = cardService.refund(refundCmd);
-
         // 3. Then: 멱등성 결과 확인
-        assertThat(secondResult.isRepeated()).isTrue();
-        assertThat(secondResult.refundAmount()).isEqualTo(5000L);
+        assertThatThrownBy(() -> {
+            cardService.refund(refundCmd);
+        }).isInstanceOf(BusinessException.class)
+          .hasFieldOrPropertyWithValue("errorCode", ErrorCode.REPEATED_REQUEST);
 
         // 4. Then: 잔액이 두 번 복구되지 않았는지 확인 (90,000 + 5,000)
         Account userAccount = accountRepository.findByAccountNumber(userAccNo).orElseThrow();

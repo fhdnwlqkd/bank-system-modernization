@@ -62,7 +62,6 @@ public class CardUsecase {
             Long balanceAfter,
             String merchantName,
             String status,
-            boolean isRepeated,
             LocalDateTime createdAt
     ) {}
 
@@ -86,7 +85,6 @@ public class CardUsecase {
             Long remainingAmount,               // 남은 결제 금액 (취소 가능 잔액)
             String reason,
             String status,
-            boolean isRepeated,
             LocalDateTime createdAt
     ) {}
 }

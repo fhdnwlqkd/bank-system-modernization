@@ -4,9 +4,7 @@ import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
 import com.m2nsteel.bank_program_modernization.core.generator.CardNumberGenerator;
 import com.m2nsteel.bank_program_modernization.domain.*;
-import com.m2nsteel.bank_program_modernization.domain.constant.AccountStatus;
-import com.m2nsteel.bank_program_modernization.domain.constant.CardStatus;
-import com.m2nsteel.bank_program_modernization.domain.constant.CardType;
+import com.m2nsteel.bank_program_modernization.domain.constant.*;
 import com.m2nsteel.bank_program_modernization.repository.*;
 import com.m2nsteel.bank_program_modernization.repository.merchant.MerchantRepository;
 import com.m2nsteel.bank_program_modernization.repository.transaction.TransactionRepository;
@@ -29,7 +27,6 @@ public class CardService {
 
     private final CardRepository cardRepository;
     private final AccountRepository accountRepository;
-    private final MemberRepository memberRepository;
     private final MerchantRepository merchantRepository;
     private final TransactionRepository transactionRepository;
     private final PaymentRepository paymentRepository;
@@ -140,42 +137,37 @@ public class CardService {
     @Transactional
     public CardUsecase.CardPaymentResult pay(CardUsecase.CardPaymentCommand command, String memberExternalId) {
         // 1. 멱등성 검증
-        return paymentRepository.findByIdempotencyKey(command.idempotencyKey())
-                .map(payment -> {
-                    return cardMapper.toPaymentResult(
-                            payment, payment.getTransaction(), payment.getCard(),
-                            payment.getCardAccount(), payment.getMerchant().getMerchantName(), true
-                    );
-                })
-                .orElseGet(() -> {
-                    // 2. 결제 로직 수행 (기존 로직)
-                    Card card = findActiveCardWithOwnership(command.cardExternalId(), memberExternalId);
-                    verifyCardPassword(command.password(), card.getPassword());
+        if(paymentRepository.existsByIdempotencyKey(command.idempotencyKey())) {
+            throw new BusinessException(ErrorCode.REPEATED_REQUEST);
+        }
 
-                    Account userAccount = card.getAccount();
-                    Merchant merchant = findMerchantByBusinessNumber(command.businessNumber());
-                    Account merchantAccount = findMerchantAccount(merchant);
+        // 2. 결제 로직 수행 (기존 로직)
+        Card card = findActiveCardWithOwnership(command.cardExternalId(), memberExternalId);
+        verifyCardPassword(command.password(), card.getPassword());
 
-                    if (userAccount.getId().equals(merchantAccount.getId())) {
-                        throw new BusinessException(ErrorCode.SELF_PAYMENT_NOT_ALLOWED);
-                    }
+        Account userAccount = card.getAccount();
+        Merchant merchant = findMerchantByBusinessNumber(command.businessNumber());
+        Account merchantAccount = findMerchantAccount(merchant);
 
-                    // 3. 실질적 자금 이동
-                    userAccount.withdraw(command.amount());
-                    merchantAccount.deposit(command.amount());
+        if (userAccount.getId().equals(merchantAccount.getId())) {
+            throw new BusinessException(ErrorCode.SELF_PAYMENT_NOT_ALLOWED);
+        }
 
-                    // 4. 원장 및 비즈니스 기록 저장
-                    Transaction transaction = Transaction.createPayment(command.amount(), command.idempotencyKey());
-                    TransactionItem.createWithdrawalItem(transaction, userAccount, command.amount(), 1);
-                    TransactionItem.createDepositItem(transaction, merchantAccount, command.amount(), 2);
-                    transactionRepository.save(transaction);
+        // 3. 실질적 자금 이동
+        userAccount.withdraw(command.amount());
+        merchantAccount.deposit(command.amount());
 
-                    Payment payment = Payment.create(card, userAccount, merchant, merchantAccount, transaction, command.amount(), command.idempotencyKey());
-                    paymentRepository.save(payment);
+        // 4. 원장 및 비즈니스 기록 저장
+        Transaction transaction = Transaction.createPayment(command.amount(), command.idempotencyKey());
+        TransactionItem.createWithdrawalItem(transaction, userAccount, command.amount(), 1);
+        TransactionItem.createDepositItem(transaction, merchantAccount, command.amount(), 2);
+        transactionRepository.save(transaction);
 
-                    // 5. 신규 처리이므로 isRepeated = false
-                    return cardMapper.toPaymentResult(payment, transaction, card, userAccount, merchant.getMerchantName(), false);
-                });
+        Payment payment = Payment.create(card, userAccount, merchant, merchantAccount, transaction, command.amount(), command.idempotencyKey());
+        paymentRepository.save(payment);
+
+        // 5. 신규 처리이므로 isRepeated = false
+        return cardMapper.toPaymentResult(payment, transaction, card, userAccount, merchant.getMerchantName());
     }
 
     /**
@@ -184,33 +176,32 @@ public class CardService {
     @Transactional
     public CardUsecase.RefundResult refund(CardUsecase.RefundCommand command) {
         // 1. 멱등성 검증
-        return refundRepository.findByIdempotencyKey(command.idempotencyKey())
-                .map(refund -> cardMapper.toRefundResult(refund.getPayment(), refund, refund.getTransaction(), true))
-                .orElseGet(() -> {
-                    // 2. 신규 환불 로직 수행
-                    Payment payment = paymentRepository.findByExternalId(command.paymentExternalId())
-                            .orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_NOT_FOUND));
+        if(refundRepository.existsByIdempotencyKey(command.idempotencyKey())) {
+            throw new BusinessException(ErrorCode.REPEATED_REQUEST);
+        }
+        // 2. 신규 환불 로직 수행
+        Payment payment = paymentRepository.findByExternalId(command.paymentExternalId())
+                .orElseThrow(() -> new BusinessException(ErrorCode.PAYMENT_NOT_FOUND));
 
-                    // 3. 엔티티 내부에서 환불 가능 금액 검증
-                    payment.refund(command.amount());
+        // 3. 엔티티 내부에서 환불 가능 금액 검증
+        payment.refund(command.amount());
 
-                    // 4. 실질적 자금 이동
-                    Account merchantAccount = payment.getMerchantAccount();
-                    Account userAccount = payment.getCard().getAccount();
+        // 4. 실질적 자금 이동
+        Account merchantAccount = payment.getMerchantAccount();
+        Account userAccount = payment.getCard().getAccount();
 
-                    merchantAccount.withdraw(command.amount());
-                    userAccount.deposit(command.amount());
+        merchantAccount.withdraw(command.amount());
+        userAccount.deposit(command.amount());
 
-                    Transaction refundTransaction = Transaction.createRefund(command.amount(), command.idempotencyKey());
-                    TransactionItem.createWithdrawalItem(refundTransaction, merchantAccount, command.amount(), 1);
-                    TransactionItem.createDepositItem(refundTransaction, userAccount, command.amount(), 2);
-                    transactionRepository.save(refundTransaction);
+        Transaction refundTransaction = Transaction.createRefund(command.amount(), command.idempotencyKey());
+        TransactionItem.createWithdrawalItem(refundTransaction, merchantAccount, command.amount(), 1);
+        TransactionItem.createDepositItem(refundTransaction, userAccount, command.amount(), 2);
+        transactionRepository.save(refundTransaction);
 
-                    Refund refund = Refund.create(payment, command.amount(), command.reason(), refundTransaction, command.idempotencyKey());
-                    refundRepository.save(refund);
+        Refund refund = Refund.create(payment, command.amount(), command.reason(), refundTransaction, command.idempotencyKey());
+        refundRepository.save(refund);
 
-                    return cardMapper.toRefundResult(payment, refund, refundTransaction, false);
-                });
+        return cardMapper.toRefundResult(payment, refund, refundTransaction);
     }
 
     // --- Helper Methods ---

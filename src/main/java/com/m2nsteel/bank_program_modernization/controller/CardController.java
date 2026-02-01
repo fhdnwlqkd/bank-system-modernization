@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-@Tag(name = "Card", description = "카드 관리 API")
+@Tag(name = "Card", description = "카드 관리 및 결제 API")
 @RestController
 @RequestMapping("/api")
 @RequiredArgsConstructor
@@ -71,5 +71,38 @@ public class CardController {
         return ResponseEntity.ok(ApiResponse.success(
                 results.stream().map(cardMapper::from).toList()
         ));
+    }
+
+    /**
+     * 카드 결제 처리
+     */
+    @Operation(summary = "카드 결제", description = "카드 번호와 비밀번호를 이용하여 상점에서 결제를 진행합니다.")
+    @PostMapping("cards/pay")
+    public ResponseEntity<ApiResponse<CardDto.CardPaymentResponse>> pay(
+            @Parameter(hidden = true) @AuthenticationPrincipal(expression = "username") String memberExternalId,
+            @Valid @RequestBody CardDto.CardPaymentRequest request
+    ) {
+        // DTO를 서비스 커맨드로 변환
+        var command = cardMapper.toCommand(request);
+
+        // 인증된 사용자의 식별자를 함께 전달하여 소유권 검증 수행
+        var result = cardService.pay(command, memberExternalId);
+
+        return ResponseEntity.ok(ApiResponse.success(cardMapper.from(result)));
+    }
+
+    /**
+     * 카드 결제 환불 처리
+     */
+    @Operation(summary = "결제 환불", description = "결제 식별자를 통해 승인된 결제를 환불 처리합니다.")
+    @PostMapping("cards/refund")
+    public ResponseEntity<ApiResponse<CardDto.RefundResponse>> refund(
+            @Valid @RequestBody CardDto.RefundRequest request
+    ) {
+        // 서비스 레이어의 환불 로직 호출
+        var command = cardMapper.toCommand(request);
+        var result = cardService.refund(command);
+
+        return ResponseEntity.ok(ApiResponse.success(cardMapper.from(result)));
     }
 }

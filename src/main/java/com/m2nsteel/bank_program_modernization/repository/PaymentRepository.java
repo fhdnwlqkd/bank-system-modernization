@@ -11,7 +11,7 @@ import java.util.Optional;
 
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
     Optional<Payment> findByExternalId(String externalId);
-    Optional<Payment> findByIdempotencyKey(String idempotencyKey);
+    Boolean existsByIdempotencyKey(String idempotencyKey);
 
     @Query("select p from Payment p " +
             "join fetch p.cardAccount a " +

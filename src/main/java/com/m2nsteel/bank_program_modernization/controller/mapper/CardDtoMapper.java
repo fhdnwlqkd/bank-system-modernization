@@ -8,5 +8,9 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface CardDtoMapper {
     CardUsecase.IssueCardCommand toCommand(CardDto.CardIssueRequest request);
+    CardUsecase.CardPaymentCommand toCommand(CardDto.CardPaymentRequest request);
+    CardUsecase.RefundCommand toCommand(CardDto.RefundRequest request);
     CardDto.CardResponse from(CardUsecase.CardResult result);
+    CardDto.CardPaymentResponse from(CardUsecase.CardPaymentResult result);
+    CardDto.RefundResponse from(CardUsecase.RefundResult result);
 }

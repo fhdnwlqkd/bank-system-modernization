@@ -26,18 +26,17 @@ public interface CardMapper {
             Transaction transaction,
             Card card,
             Account cardAccount,
-            String merchantName,
-            boolean isRepeated
+            String merchantName
     );
 
     @Mapping(target = "refundExternalId", source = "refund.externalId")
     @Mapping(target = "refundTxExternalId", source = "refundTx.externalId")
     @Mapping(target = "originalPaymentExternalId", source = "payment.externalId")
-    @Mapping(target = "status", source = "refund.status")
+    @Mapping(target = "status", source = "payment.status")
     @Mapping(target = "originalAmount", source = "payment.amount")
     @Mapping(target = "remainingAmount", expression = "java(payment.getRefundableAmount())")
     @Mapping(target = "createdAt", source = "refund.createdAt")
-    CardUsecase.RefundResult toRefundResult(Payment payment, Refund refund, Transaction refundTx, boolean isRepeated);
+    CardUsecase.RefundResult toRefundResult(Payment payment, Refund refund, Transaction refundTx);
 
     @Named("maskCard")
     default String maskCardNumber(String cardNumber) {

@@ -73,4 +73,36 @@ public class AccountController {
 
         return ResponseEntity.ok(ApiResponse.success(accountMapper.from(result)));
     }
+
+    /**
+     * 계좌 비밀번호 변경
+     */
+    @Operation(summary = "계좌 비밀번호 변경", description = "기존 비밀번호 확인 후 새로운 비밀번호로 변경합니다.")
+    @PatchMapping("accounts/{accountExternalId}/password")
+    public ResponseEntity<ApiResponse<AccountDto.AccountResponse>> changePassword(
+            @Parameter(hidden = true) @AuthenticationPrincipal(expression = "username") String memberExternalId,
+            @PathVariable("accountExternalId") String accountExternalId, // 이름 명시 ㅋ
+            @Valid @RequestBody AccountDto.AccountChangePasswordRequest request
+    ) {
+        // 1. DTO -> Command 변환
+        var command = accountMapper.toCommand(request);
+
+        // 2. 서비스 호출
+        var result = accountService.changePassword(command, accountExternalId, memberExternalId);
+
+        return ResponseEntity.ok(ApiResponse.success(accountMapper.from(result)));
+    }
+
+    /**
+     * 계좌 해지 (정지)
+     */
+    @Operation(summary = "계좌 해지", description = "보유한 계좌를 해지 상태로 변경합니다.")
+    @DeleteMapping("accounts/{accountId}")
+    public ResponseEntity<ApiResponse<Void>> closeAccount(
+            @Parameter(hidden = true) @AuthenticationPrincipal(expression = "username") String memberExternalId,
+            @PathVariable("accountId") String accountExternalId
+    ) {
+        accountService.close(accountExternalId, memberExternalId);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
 }

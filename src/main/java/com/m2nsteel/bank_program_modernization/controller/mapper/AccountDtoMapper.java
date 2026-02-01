@@ -8,5 +8,6 @@ import org.mapstruct.ReportingPolicy;
 @Mapper(componentModel = "spring", unmappedTargetPolicy = ReportingPolicy.IGNORE)
 public interface AccountDtoMapper {
     AccountUsecase.AccountCreateCommand toCommand(AccountDto.AccountCreateRequest request, String memberExternalId);
+    AccountUsecase.AccountChangePasswordCommand toCommand(AccountDto.AccountChangePasswordRequest request);
     AccountDto.AccountResponse from(AccountUsecase.AccountResult result);
 }

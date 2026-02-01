@@ -155,4 +155,80 @@ class AccountControllerTest {
                 .convertTo(ExceptionResponse.class)
                 .satisfies(res -> assertThat(res.errorName()).contains("ACCOUNT_NOT_FOUND"));
     }
+
+    @Test
+    @DisplayName("성공: 계좌 비밀번호 변경")
+    void changePassword_Success() throws JsonProcessingException {
+        // 1. Given: 계좌 생성 및 ID 추출
+        var createReq = new AccountDto.AccountCreateRequest(ACCOUNT_PW);
+        assertThat(mvc.post().uri("/api/accounts")
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonmapper.writeValueAsString(createReq)))
+                .bodyJson()
+                .extractingPath("$.data.externalId")
+                .satisfies(id -> this.accountId = id.toString());
+
+        // 2. When: 비밀번호 변경 실행 (1234 -> 5678)
+        var changeReq = new AccountDto.AccountChangePasswordRequest(ACCOUNT_PW, "5678");
+        assertThat(mvc.patch().uri("/api/accounts/{id}/password", accountId)
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonmapper.writeValueAsString(changeReq)))
+                .hasStatus(HttpStatus.OK)
+                .bodyJson()
+                .extractingPath("$.data")
+                .convertTo(AccountDto.AccountResponse.class)
+                .satisfies(res -> {
+                    assertThat(res.externalId()).isEqualTo(accountId);
+                    assertThat(res.status()).isEqualTo("ACTIVE");
+                });
+    }
+
+    @Test
+    @DisplayName("실패: 틀린 기존 비밀번호로 변경 시도 시 INVALID_PASSWORD 에러")
+    void changePassword_Fail_WrongPassword() throws JsonProcessingException {
+        // 1. Given: 계좌 생성
+        var createReq = new AccountDto.AccountCreateRequest(ACCOUNT_PW);
+        assertThat(mvc.post().uri("/api/accounts")
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonmapper.writeValueAsString(createReq)))
+                .bodyJson()
+                .extractingPath("$.data.externalId")
+                .satisfies(id -> this.accountId = id.toString());
+
+        // 2. When: 엉뚱한 기존 비밀번호(0000)로 변경 시도
+        var changeReq = new AccountDto.AccountChangePasswordRequest("0000", "5678");
+        assertThat(mvc.patch().uri("/api/accounts/{id}/password", accountId)
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonmapper.writeValueAsString(changeReq)))
+                .hasStatus(HttpStatus.UNAUTHORIZED)
+                .bodyJson()
+                .extractingPath("$.error")
+                .convertTo(ExceptionResponse.class)
+                .satisfies(res -> {
+                    assertThat(res.errorName()).contains("INVALID_PASSWORD");
+                });
+    }
+
+    @Test
+    @DisplayName("성공: 계좌 해지 및 상태 변경 검증")
+    void closeAccount_Success() throws JsonProcessingException {
+        // 1. Given: 계좌 생성
+        var createReq = new AccountDto.AccountCreateRequest(ACCOUNT_PW);
+        assertThat(mvc.post().uri("/api/accounts")
+                .header("Authorization", "Bearer " + accessToken)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(jsonmapper.writeValueAsString(createReq)))
+                .bodyJson()
+                .extractingPath("$.data.externalId")
+                .satisfies(id -> this.accountId = id.toString());
+
+        // 2. When: 계좌 해지 호출
+        assertThat(mvc.delete().uri("/api/accounts/{id}", accountId)
+                .header("Authorization", "Bearer " + accessToken))
+                .hasStatus(HttpStatus.OK);
+    }
 }

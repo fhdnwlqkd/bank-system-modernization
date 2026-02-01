@@ -15,8 +15,7 @@ public interface TransactionMapper {
     @Mapping(target = "accountNumber", source = "item.account.accountNumber")
     @Mapping(target = "balanceAfter", source = "item.balanceAfter")
     @Mapping(target = "createdAt", source = "transaction.createdAt")
-    @Mapping(target = "isRepeated", source = "isRepeated")
-    TransactionUsecase.GeneralResult toResult(Transaction transaction, TransactionItem item, boolean isRepeated);
+    TransactionUsecase.GeneralResult toResult(Transaction transaction, TransactionItem item);
 
     @Mapping(target = "txExternalId", source = "item.transaction.externalId")
     @Mapping(target = "type", source = "item.transaction.type")
@@ -31,8 +30,7 @@ public interface TransactionMapper {
     @Mapping(target = "toAccountNumber", source = "toItem.account.accountNumber")
     @Mapping(target = "balanceAfter", source = "fromItem.balanceAfter")
     @Mapping(target = "createdAt", source = "transaction.createdAt")
-    @Mapping(target = "isRepeated", source = "isRepeated")
-    TransactionUsecase.TransferResult toTransferResult(Transaction transaction, TransactionItem fromItem, TransactionItem toItem, boolean isRepeated);
+    TransactionUsecase.TransferResult toTransferResult(Transaction transaction, TransactionItem fromItem, TransactionItem toItem);
 
     TransactionQueryCriteria toCriteria(TransactionUsecase.TransactionSearchCondition condition);
 }

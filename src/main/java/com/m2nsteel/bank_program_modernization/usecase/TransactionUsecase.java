@@ -35,7 +35,6 @@ public class TransactionUsecase {
             Long amount,
             Long balanceAfter,
             String status,
-            boolean isRepeated,
             LocalDateTime createdAt
     ) {}
 
@@ -46,7 +45,6 @@ public class TransactionUsecase {
             Long amount,
             Long balanceAfter,
             String status,
-            boolean isRepeated,
             LocalDateTime createdAt
     ) {}
 

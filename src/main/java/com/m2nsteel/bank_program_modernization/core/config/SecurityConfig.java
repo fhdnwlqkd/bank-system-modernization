@@ -38,11 +38,10 @@ public class SecurityConfig {
                         // 회원가입과 로그인은 누구에게나 허용
                         .requestMatchers(HttpMethod.POST, "/api/members").permitAll()    // 일반 회원가입
                         .requestMatchers(HttpMethod.POST, "/api/merchants").permitAll()  // 가맹점 가입
-                        .requestMatchers(HttpMethod.POST, "/api/auth/tokens").permitAll() // 로그인(토큰 생성)
+                        .requestMatchers(HttpMethod.POST, "/api/admins").permitAll()  // 가맹점 가입
+                        .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll() // 로그인(토큰 생성)
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
 
-                        // 2. 관리자(ADMIN)만 접근 가능함
-                        .requestMatchers(HttpMethod.POST, "/api/branches/**").hasRole("ADMIN")
                         // 그 외 모든 요청은 인증 필요
                         .anyRequest().authenticated()
                 )

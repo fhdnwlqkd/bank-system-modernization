@@ -7,16 +7,27 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.time.LocalDateTime;
+import java.util.List;
+
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
     // 비즈니스 예외 처리
     @ExceptionHandler(BusinessException.class)
-    protected ResponseEntity<ApiResponse<?>> handleBusinessException(BusinessException e) {
+    protected ResponseEntity<ErrorResponse> handleBusinessException(BusinessException e) {
+        log.error("BusinessException: {}", e.getErrorCode().getMessage());
+
         ErrorCode errorCode = e.getErrorCode();
-        return ResponseEntity
-                .status(errorCode.getHttpStatus())
-                .body(ApiResponse.fail(errorCode.getCode(), errorCode.getMessage()));
+        ErrorResponse response = new ErrorResponse(
+                errorCode.getCode(),
+                errorCode.name(),
+                errorCode.getMessage(),
+                LocalDateTime.now(),
+                List.of()
+        );
+
+        return ResponseEntity.status(errorCode.getHttpStatus()).body(response);
     }
 
     // 예측하지 못한 서버 내부 오류 처리

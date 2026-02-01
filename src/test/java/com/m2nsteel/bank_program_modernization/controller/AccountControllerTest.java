@@ -111,7 +111,7 @@ class AccountControllerTest {
     @Test
     @DisplayName("성공: 내 계좌 목록 조회")
     void getMyAccounts_Success() throws JsonProcessingException {
-        // Given: 계좌 2개 생성 ㅋ
+        // Given: 계좌 2개 생성
         var request = new AccountDto.AccountCreateRequest(ACCOUNT_PW);
         mvc.post().uri("/api/accounts").header("Authorization", "Bearer " + accessToken)
                 .contentType(MediaType.APPLICATION_JSON).content(jsonmapper.writeValueAsString(request)).exchange();
@@ -119,7 +119,7 @@ class AccountControllerTest {
                 .contentType(MediaType.APPLICATION_JSON).content(jsonmapper.writeValueAsString(request)).exchange();
 
         // When & Then
-        assertThat(mvc.get().uri("/api/accounts")
+        assertThat(mvc.get().uri("/api/members/me/accounts")
                 .header("Authorization", "Bearer " + accessToken))
                 .hasStatus(HttpStatus.OK)
                 .bodyJson()

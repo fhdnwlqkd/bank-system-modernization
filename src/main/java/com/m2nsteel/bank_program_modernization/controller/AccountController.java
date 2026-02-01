@@ -18,7 +18,7 @@ import java.util.List;
 
 @Tag(name = "Account", description = "계좌 관리 API")
 @RestController
-@RequestMapping("/api/accounts")
+@RequestMapping("/api")
 @RequiredArgsConstructor
 public class AccountController {
 
@@ -29,7 +29,7 @@ public class AccountController {
      * 신규 계좌 개설
      */
     @Operation(summary = "계좌 개설", description = "인증된 사용자의 신규 계좌를 생성합니다.")
-    @PostMapping
+    @PostMapping("/accounts")
     public ResponseEntity<ApiResponse<AccountDto.AccountResponse>> createAccount(
             @Parameter(hidden = true) @AuthenticationPrincipal(expression = "username") String externalId,
             @Valid @RequestBody AccountDto.AccountCreateRequest request
@@ -49,7 +49,7 @@ public class AccountController {
      * 내 계좌 목록 조회
      */
     @Operation(summary = "내 계좌 목록 조회", description = "현재 로그인한 사용자가 보유한 모든 계좌를 조회합니다.")
-    @GetMapping
+    @GetMapping("/members/me/accounts")
     public ResponseEntity<ApiResponse<List<AccountDto.AccountResponse>>> getMyAccounts(
             @Parameter(hidden = true) @AuthenticationPrincipal(expression = "username") String externalId
     ) {
@@ -64,10 +64,10 @@ public class AccountController {
      * 특정 계좌 상세 조회
      */
     @Operation(summary = "계좌 상세 조회", description = "계좌 식별자를 통해 특정 계좌의 상세 정보를 조회합니다.")
-    @GetMapping("/{accountExternalId}")
+    @GetMapping("/accounts/{accountId}")
     public ResponseEntity<ApiResponse<AccountDto.AccountResponse>> getAccountDetail(
             @Parameter(hidden = true) @AuthenticationPrincipal(expression = "username") String externalId,
-            @PathVariable("accountExternalId") String accountExternalId
+            @PathVariable("accountId") String accountExternalId
     ) {
         var result = accountService.getAccountDetail(accountExternalId, externalId);
 

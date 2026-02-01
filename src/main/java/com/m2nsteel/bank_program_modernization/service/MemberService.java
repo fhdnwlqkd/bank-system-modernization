@@ -42,9 +42,8 @@ public class MemberService implements UserDetailsService {
     /**
      * 내 정보 조회
      */
-    public MemberUsecase.MemberResult getMyInfo(String externalId) {
-        Member member = findMemberOrThrow(externalId);
-        return memberMapper.toResult(member);
+    public MemberUsecase.MemberResult getMemberInfo(String externalId) {
+        return memberMapper.toResult(findMemberOrThrow(externalId));
     }
 
     /**
@@ -174,15 +173,6 @@ public class MemberService implements UserDetailsService {
     public void withdraw(String externalId) {
         Member member = findMemberOrThrow(externalId);
         member.withdraw();
-    }
-
-    /**
-     * [Admin] 멤버 목록 조회
-     */
-//    public Page<MemberUsecase.MemberResult> getMembersByAdmin(MemberSearchCondition condition, Pageable pageable) {}
-
-    public MemberUsecase.MemberResult getMemberInfo(String externalId) {
-        return memberMapper.toResult(findMemberOrThrow(externalId));
     }
 
     // --- 헬퍼 메서드 ---

@@ -30,6 +30,28 @@ public class AccountService {
     private final AccountNumberGenerator generator;
 
     /**
+     * 계좌 조회
+     */
+    public List<AccountUsecase.AccountResult> getMyAccounts(String memberExternalId) {
+        Member member = memberRepository.findByExternalId(memberExternalId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+        // Member의 externalId로 연관된 모든 계좌를 조회합니다.
+        return accountRepository.findAllByMember(member)
+                .stream()
+                .map(accountMapper::toResult)
+                .toList();
+    }
+
+    /**
+     * 특정 계좌 상세 조회
+     */
+    public AccountUsecase.AccountResult getAccountDetail(String accountExternalId, String memberExternalId) {
+        // 1. 계좌 및 회원 조회
+        Account account = findMyAccount(accountExternalId, memberExternalId);
+        return accountMapper.toResult(account);
+    }
+
+    /**
      * 신규 계좌 개설
      */
     @Transactional
@@ -55,28 +77,6 @@ public class AccountService {
         );
 
         return accountMapper.toResult(accountRepository.save(account));
-    }
-
-    /**
-     * 계좌 조회
-     */
-    public List<AccountUsecase.AccountResult> getMyAccounts(String memberExternalId) {
-        Member member = memberRepository.findByExternalId(memberExternalId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
-        // Member의 externalId로 연관된 모든 계좌를 조회합니다.
-        return accountRepository.findAllByMember(member)
-                .stream()
-                .map(accountMapper::toResult)
-                .toList();
-    }
-
-    /**
-     * 특정 계좌 상세 조회
-     */
-    public AccountUsecase.AccountResult getAccountDetail(String accountExternalId, String memberExternalId) {
-        // 1. 계좌 및 회원 조회
-        Account account = findMyAccount(accountExternalId, memberExternalId);
-        return accountMapper.toResult(account);
     }
 
     /**
@@ -106,6 +106,8 @@ public class AccountService {
         return accountMapper.toResult(account);
     }
 
+
+    // -- Helper Methods --
     private Account findMyAccount(String accountExternalId, String memberExternalId) {
         // 1. 인가 체크: 계좌 존재 여부 및 소유권 확인
         Account account = accountRepository.findByExternalId(accountExternalId)

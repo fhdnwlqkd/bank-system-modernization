@@ -20,8 +20,8 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final TokenProvider tokenProvider;
 
-    /*
-    로그인 처리 및 토큰 발급
+    /**
+     * 로그인 처리 및 토큰 발급
      */
     @Transactional
     public AuthUsecase.TokenResult login(AuthUsecase.LoginCommand command) {
@@ -46,8 +46,8 @@ public class AuthService {
         return new AuthUsecase.TokenResult(accessToken, refreshToken);
     }
 
-    /*
-    본인 인증 확인
+    /**
+     * 본인 인증 확인
      */
     public void verifyMember(String externalId, String password) {
         Member member = memberRepository.findByExternalId(externalId)

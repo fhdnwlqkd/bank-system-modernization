@@ -62,6 +62,24 @@ public class CardService {
     }
 
     /**
+     * 결제 내역 조회
+     */
+    public List<CardUsecase.PaymentSummary> getPayments(String memberExternalId) {
+        // 1. 카드 결제 내역 조회
+        List<Payment> payments = paymentRepository.findAllByMemberExternalId(memberExternalId);
+
+        // 2. 결과 매핑 후 반환
+        return payments.stream()
+                .map(payment -> {
+                    Card card = payment.getCard();
+                    String merchantName = payment.getMerchant().getMerchantName();
+                    return cardMapper.toPaymentSummary(payment, card, merchantName);
+                })
+                .toList();
+
+    }
+
+    /**
      * 카드 신규 발급
      */
     @Transactional
@@ -195,25 +213,7 @@ public class CardService {
                 });
     }
 
-    /**
-     * 결제 내역 조회
-     */
-    public List<CardUsecase.PaymentSummary> getPayments(String memberExternalId) {
-        // 2. 카드 결제 내역 조회
-        List<Payment> payments = paymentRepository.findAllByMemberExternalId(memberExternalId);
-
-        // 3. 결과 매핑 후 반환
-        return payments.stream()
-                .map(payment -> {
-                    Card card = payment.getCard();
-                    String merchantName = payment.getMerchant().getMerchantName();
-                    return cardMapper.toPaymentSummary(payment, card, merchantName);
-                })
-                .toList();
-
-    }
-
-    // --- Private Helper Methods ---
+    // --- Helper Methods ---
     private Card findActiveCardWithOwnership(String cardExternalId, String externalId) {
         Card card = findActiveCard(cardExternalId);
         if (!card.getAccount().getMember().getExternalId().equals(externalId)) {

@@ -13,9 +13,7 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "role")
-@Table(name = "members", indexes = {
-        @Index(name = "idx_member_login_id", columnList = "loginId")
-})
+@Table(name = "members")
 public class Member extends BaseEntity {
     private String name;
     private String contact;

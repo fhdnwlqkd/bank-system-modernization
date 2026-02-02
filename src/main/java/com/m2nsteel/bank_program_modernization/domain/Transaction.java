@@ -15,9 +15,7 @@ import java.util.List;
 @Getter
 @SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "transactions", indexes = {
-        @Index(name = "idx_transaction_idempotency", columnList = "idempotencyKey")
-})
+@Table(name = "transactions")
 public class Transaction extends BaseEntity {
 
     @Enumerated(EnumType.STRING)

@@ -15,9 +15,7 @@ import java.util.concurrent.ThreadLocalRandom;
 @Getter
 @SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "accounts", indexes = {
-        @Index(name = "idx_account_number", columnList = "accountNumber")
-})
+@Table(name = "accounts")
 public class Account extends BaseEntity {
 
     @Column(unique = true, nullable = false, updatable = false)
@@ -37,8 +35,8 @@ public class Account extends BaseEntity {
     @Column(nullable = false)
     private AccountStatus status;
 
-    @Version // 낙관적 락을 위한 버전 필드
-    private Long version;
+//    @Version // 낙관적 락을 위한 버전 필드
+//    private Long version;
 
     // --- 비즈니스 로직 ---
     public void deposit(Long amount) {

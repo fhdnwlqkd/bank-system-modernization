@@ -2,10 +2,13 @@ package com.m2nsteel.bank_program_modernization.service;
 
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
+import com.m2nsteel.bank_program_modernization.domain.Member;
+import com.m2nsteel.bank_program_modernization.domain.constant.MemberRole;
 import com.m2nsteel.bank_program_modernization.domain.constant.MemberStatus;
 import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
 import com.m2nsteel.bank_program_modernization.repository.MemberRepository;
 import com.m2nsteel.bank_program_modernization.usecase.MemberUsecase;
+import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -28,6 +31,8 @@ class MemberServiceTest {
 
     @Autowired
     private AccountRepository accountRepository;
+    @Autowired
+    private EntityManager em;
 
     private static final String PASSWORD = "password123!";
 
@@ -46,12 +51,22 @@ class MemberServiceTest {
             // when
             var result = memberService.signUp(command);
 
+            System.out.println("가입 결과: " + result);
             // then
             assertThat(result.loginId()).isEqualTo("tester1");
             assertThat(result.externalId()).isNotNull();
+            assertThat(result.name()).isEqualTo("홍길동");
+            assertThat(result.contact()).isEqualTo("010-1111-2222");
+            assertThat(result.status()).isEqualTo(MemberStatus.ACTIVE);
+            assertThat(result.role()).isEqualTo(MemberRole.USER);
+
+            em.flush();
+            em.clear();
 
             // DB 실제 저장 여부 확인
+            Member foundMember = memberRepository.findByLoginId("tester1").orElseThrow();
             assertThat(memberRepository.existsByLoginId("tester1")).isTrue();
+            assertThat(foundMember.getRole()).isEqualTo(MemberRole.USER);
         }
 
         @Test

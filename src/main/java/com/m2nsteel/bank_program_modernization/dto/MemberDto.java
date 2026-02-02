@@ -1,5 +1,6 @@
 package com.m2nsteel.bank_program_modernization.dto;
 
+import com.m2nsteel.bank_program_modernization.domain.constant.MemberRole;
 import com.m2nsteel.bank_program_modernization.domain.constant.MemberStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
@@ -100,6 +101,9 @@ public class MemberDto {
 
             @Schema(description = "연락처", example = "010-1234-5678")
             String contact,
+
+            @Schema(description = "계정 권한", example = "USER")
+            MemberRole role,
 
             @Schema(description = "계정 상태", example = "ACTIVE")
             MemberStatus status,

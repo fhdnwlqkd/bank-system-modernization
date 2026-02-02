@@ -2,6 +2,7 @@ package com.m2nsteel.bank_program_modernization.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.m2nsteel.bank_program_modernization.core.api.ExceptionResponse;
+import com.m2nsteel.bank_program_modernization.domain.constant.MemberRole;
 import com.m2nsteel.bank_program_modernization.domain.constant.MemberStatus;
 import com.m2nsteel.bank_program_modernization.dto.AuthDto;
 import com.m2nsteel.bank_program_modernization.dto.MemberDto;
@@ -49,6 +50,7 @@ class MemberRegistrationControllerTest {
                     assertThat(res.loginId()).isEqualTo("user123");
                     assertThat(res.name()).isEqualTo("홍길동");
                     assertThat(res.status()).isEqualTo(MemberStatus.ACTIVE);
+                    assertThat(res.role()).isEqualTo(MemberRole.USER);
                 });
     }
 

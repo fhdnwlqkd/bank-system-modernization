@@ -15,7 +15,13 @@ import java.time.LocalDateTime;
 @Getter
 @SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "cards")
+@Table(
+    name = "cards",
+    indexes = {
+        @Index(name = "card_external_id_idx", columnList = "external_id"),
+        @Index(name = "card_account_id_idx", columnList = "account_id")
+    }
+)
 public class Card extends BaseEntity {
 
     @Column(unique = true, nullable = false, updatable = false)

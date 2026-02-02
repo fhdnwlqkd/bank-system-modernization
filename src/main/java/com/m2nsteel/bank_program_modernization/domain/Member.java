@@ -14,7 +14,13 @@ import lombok.experimental.SuperBuilder;
 @Inheritance(strategy = InheritanceType.SINGLE_TABLE)
 @DiscriminatorColumn(name = "role")
 @DiscriminatorValue("USER")
-@Table(name = "members")
+@Table(
+    name = "members",
+    indexes = {
+        @Index(name = "member_external_id", columnList = "external_id"),
+        @Index(name = "member_login_id", columnList = "login_id")
+    }
+)
 public class Member extends BaseEntity {
     private String name;
     private String contact;

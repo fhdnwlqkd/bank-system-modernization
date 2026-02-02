@@ -41,8 +41,8 @@ class BankingStressTest {
         new HTTPRequest()
 
         // CSV 로드 (shared_accounts 제거)
-        loadCsv("users.csv", userPool)
-        loadCsv("merchants.csv", merchantPool)
+        loadCsv("users.csv", userPool, 100)
+        loadCsv("merchants.csv", merchantPool, 100)
 
         Grinder.grinder.logger.info("리소스 로드 완료: 유저 ${userPool.size()}명, 가맹점 ${merchantPool.size()}개")
     }
@@ -221,15 +221,22 @@ class BankingStressTest {
         return http.GET(BASE_URL + path)
     }
 
-    private static void loadCsv(String fileName, List pool) {
+    private static void loadCsv(String fileName, List pool, int limit) {
         def file = new File("./resources/${fileName}")
-        if (!file.exists()) throw new RuntimeException("${fileName} 파일이 리소스 폴더에 없습니다.")
+        if (!file.exists()) throw new RuntimeException("${fileName} 파일이 없습니다.")
 
+        int count = 0
         file.eachLine { line, idx ->
-            if (idx == 1) return
+            if (idx == 1) return // 헤더 스킵 ㅋ
+            if (count >= limit) return // 설정한 limit에 도달하면 더 이상 추가 안 함 ㅋ
+
             def c = line.split(',')
-            if (fileName == "users.csv") pool << [loginId: c[0], password: c[1], accountNo: c[2], accountId: c[3], cardId: c[4]]
-            else if (fileName == "merchants.csv") pool << [loginId: c[0], password: c[1], businessNumber: c[2]]
+            if (fileName == "users.csv") {
+                pool << [loginId: c[0], password: c[1], accountNo: c[2], accountId: c[3], cardId: c[4]]
+            } else if (fileName == "super_merchants.csv") {
+                pool << [loginId: c[0], password: c[1], businessNumber: c[2]]
+            }
+            count++ // 추가된 유저/가맹점 수 카운트 ㅋ
         }
     }
 }

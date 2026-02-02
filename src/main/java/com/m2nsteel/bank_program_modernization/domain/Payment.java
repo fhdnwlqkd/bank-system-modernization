@@ -13,6 +13,14 @@ import lombok.experimental.SuperBuilder;
 @Getter
 @SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(
+    name = "payments",
+    indexes = {
+        @Index(name = "idx_payments_external_id", columnList = "externalId"),
+        @Index(name = "idx_payments_merchant_date", columnList = "merchant_id, createdAt"),
+        @Index(name = "idx_payments_idempotency_key", columnList = "idempotencyKey")
+    }
+)
 public class Payment extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "card_id", nullable = false)

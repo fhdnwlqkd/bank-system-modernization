@@ -15,7 +15,13 @@ import java.util.concurrent.ThreadLocalRandom;
 @Getter
 @SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "accounts")
+@Table(
+    name = "accounts",
+    indexes = {
+        @Index(name = "idx_account_external_id", columnList = "external_id"),
+        @Index(name = "idx_account_account_number", columnList = "account_number")
+    }
+)
 public class Account extends BaseEntity {
 
     @Column(unique = true, nullable = false, updatable = false)

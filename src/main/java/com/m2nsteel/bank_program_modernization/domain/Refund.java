@@ -11,6 +11,12 @@ import lombok.experimental.SuperBuilder;
 @Getter
 @SuperBuilder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Table(
+    name = "refunds",
+    indexes = {
+        @Index(name = "refund_idempotency_key_idx", columnList = "idempotencyKey")
+    }
+)
 public class Refund extends BaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "payment_id", nullable = false)

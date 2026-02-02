@@ -86,7 +86,7 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         ExceptionResponse response = new ExceptionResponse(
                 ErrorCode.INTERNAL_SERVER_ERROR.getCode(),
                 ErrorCode.INTERNAL_SERVER_ERROR.name(),
-                "서버 내부 오류가 발생했습니다. 관리자에게 문의하세요.",
+                e.getMessage(),
                 LocalDateTime.now(),
                 List.of()
         );

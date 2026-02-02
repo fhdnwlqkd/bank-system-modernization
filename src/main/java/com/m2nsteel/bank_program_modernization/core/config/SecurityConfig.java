@@ -41,6 +41,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/admins").permitAll()
                         .requestMatchers(HttpMethod.POST, "/api/auth/login").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+                        .requestMatchers("/actuator/**").permitAll()
 
                         // 2. 가맹점 전용 API: MERCHANT 또는 ADMIN만 접근 가능
                         .requestMatchers("/api/merchants/me/**").hasAnyRole("MERCHANT", "ADMIN")

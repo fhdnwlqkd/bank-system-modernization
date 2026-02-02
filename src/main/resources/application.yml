@@ -26,3 +26,17 @@ jwt:
 
   access-expiration: 3600000      # 1시간 (60 * 60 * 1000)
   refresh-expiration: 1209600000  # 14일 (14 * 24 * 60 * 60 * 1000)
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus, health, info
+  endpoint:
+    prometheus:
+      enabled: true
+    health:
+      show-details: always
+  metrics:
+    tags:
+      application: ${spring.application.name}

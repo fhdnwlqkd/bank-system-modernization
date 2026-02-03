@@ -142,10 +142,7 @@ public class CardService {
     @Transactional
     public CardUsecase.CardPaymentResult pay(CardUsecase.CardPaymentCommand command, String memberExternalId) {
         // 1. 멱등성 검증
-//        if(idempotencyKeyService.isDuplicate(command.idempotencyKey())) {
-//            throw new BusinessException(ErrorCode.REPEATED_REQUEST);
-//        }
-        if(paymentRepository.existsByIdempotencyKey(command.idempotencyKey())) {
+        if(idempotencyKeyService.isDuplicate(command.idempotencyKey())) {
             throw new BusinessException(ErrorCode.REPEATED_REQUEST);
         }
 

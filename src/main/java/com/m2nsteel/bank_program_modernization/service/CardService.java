@@ -8,10 +8,12 @@ import com.m2nsteel.bank_program_modernization.domain.constant.*;
 import com.m2nsteel.bank_program_modernization.repository.*;
 import com.m2nsteel.bank_program_modernization.repository.merchant.MerchantRepository;
 import com.m2nsteel.bank_program_modernization.repository.transaction.TransactionRepository;
+import com.m2nsteel.bank_program_modernization.service.listener.BalanceSyncEvent;
 import com.m2nsteel.bank_program_modernization.service.mapper.CardMapper;
 import com.m2nsteel.bank_program_modernization.usecase.CardUsecase;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,8 +27,11 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class CardService {
 
+    private final ApplicationEventPublisher eventPublisher;
+    private final IdempotencyKeyService idempotencyKeyService;
+    private final RedisBalanceService redisBalanceService;
+    private final AccountQueryService accountQueryService;
     private final CardRepository cardRepository;
-    private final AccountRepository accountRepository;
     private final MerchantRepository merchantRepository;
     private final TransactionRepository transactionRepository;
     private final PaymentRepository paymentRepository;
@@ -137,6 +142,9 @@ public class CardService {
     @Transactional
     public CardUsecase.CardPaymentResult pay(CardUsecase.CardPaymentCommand command, String memberExternalId) {
         // 1. 멱등성 검증
+//        if(idempotencyKeyService.isDuplicate(command.idempotencyKey())) {
+//            throw new BusinessException(ErrorCode.REPEATED_REQUEST);
+//        }
         if(paymentRepository.existsByIdempotencyKey(command.idempotencyKey())) {
             throw new BusinessException(ErrorCode.REPEATED_REQUEST);
         }
@@ -147,27 +155,33 @@ public class CardService {
 
         Account userAccount = card.getAccount();
         Merchant merchant = findMerchantByBusinessNumber(command.businessNumber());
-        Account merchantAccount = findMerchantAccount(merchant);
+        Account merchantAccount = accountQueryService.getAccountByMember(merchant);
 
         if (userAccount.getId().equals(merchantAccount.getId())) {
             throw new BusinessException(ErrorCode.SELF_PAYMENT_NOT_ALLOWED);
         }
 
-        // 3. 실질적 자금 이동
-        userAccount.withdraw(command.amount());
-        merchantAccount.deposit(command.amount());
+        // 3. 실질적 자금 이동 (레디스 기반 잔액 차감)
+        Long userNewBalance = redisBalanceService.decreaseBalance(userAccount.getId(), command.amount());
+        if (userNewBalance == -1L) {
+            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
+        }
+        Long merchantNewBalance = redisBalanceService.increaseBalance(merchantAccount.getId(), command.amount());
 
         // 4. 원장 및 비즈니스 기록 저장
         Transaction transaction = Transaction.createPayment(command.amount(), command.idempotencyKey());
-        TransactionItem.createWithdrawalItem(transaction, userAccount, command.amount(), 1);
-        TransactionItem.createDepositItem(transaction, merchantAccount, command.amount(), 2);
+        TransactionItem.createWithdrawalItem(transaction, userAccount, command.amount(), 1, userNewBalance);
+        TransactionItem.createDepositItem(transaction, merchantAccount, command.amount(), 2, merchantNewBalance);
         transactionRepository.save(transaction);
 
         Payment payment = Payment.create(card, userAccount, merchant, merchantAccount, transaction, command.amount(), command.idempotencyKey());
         paymentRepository.save(payment);
 
-        // 5. 신규 처리이므로 isRepeated = false
-        return cardMapper.toPaymentResult(payment, transaction, card, userAccount, merchant.getMerchantName());
+        eventPublisher.publishEvent(new BalanceSyncEvent(userAccount.getId(), userNewBalance));
+        eventPublisher.publishEvent(new BalanceSyncEvent(merchantAccount.getId(), merchantNewBalance));
+
+        // 5. 결과 반환
+        return cardMapper.toPaymentResult(payment, transaction, card, userAccount, merchant.getMerchantName(), userNewBalance);
     }
 
     /**
@@ -176,7 +190,7 @@ public class CardService {
     @Transactional
     public CardUsecase.RefundResult refund(CardUsecase.RefundCommand command) {
         // 1. 멱등성 검증
-        if(refundRepository.existsByIdempotencyKey(command.idempotencyKey())) {
+        if(idempotencyKeyService.isDuplicate(command.idempotencyKey())) {
             throw new BusinessException(ErrorCode.REPEATED_REQUEST);
         }
         // 2. 신규 환불 로직 수행
@@ -190,16 +204,25 @@ public class CardService {
         Account merchantAccount = payment.getMerchantAccount();
         Account userAccount = payment.getCard().getAccount();
 
-        merchantAccount.withdraw(command.amount());
-        userAccount.deposit(command.amount());
+        // 가맹점 잔액 차감 (Redis)
+        Long merchantNewBalance = redisBalanceService.decreaseBalance(merchantAccount.getId(), command.amount());
+        if (merchantNewBalance == -1L) {
+            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
+        }
+
+        // 유저 잔액 증액 (Redis)
+        Long userNewBalance = redisBalanceService.increaseBalance(userAccount.getId(), command.amount());
 
         Transaction refundTransaction = Transaction.createRefund(command.amount(), command.idempotencyKey());
-        TransactionItem.createWithdrawalItem(refundTransaction, merchantAccount, command.amount(), 1);
-        TransactionItem.createDepositItem(refundTransaction, userAccount, command.amount(), 2);
+        TransactionItem.createWithdrawalItem(refundTransaction, merchantAccount, command.amount(), 1, merchantNewBalance);
+        TransactionItem.createDepositItem(refundTransaction, userAccount, command.amount(), 2, userNewBalance);
         transactionRepository.save(refundTransaction);
 
         Refund refund = Refund.create(payment, command.amount(), command.reason(), refundTransaction, command.idempotencyKey());
         refundRepository.save(refund);
+
+        eventPublisher.publishEvent(new BalanceSyncEvent(merchantAccount.getId(), merchantNewBalance));
+        eventPublisher.publishEvent(new BalanceSyncEvent(userAccount.getId(), userNewBalance));
 
         return cardMapper.toRefundResult(payment, refund, refundTransaction);
     }
@@ -227,11 +250,6 @@ public class CardService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.MERCHANT_NOT_FOUND));
     }
 
-    private Account findMerchantAccount(Member merchant) {
-        return accountRepository.findByMember(merchant)
-                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
-    }
-
     private void verifyCardPassword(String rawPassword, String encodedPassword) {
         if (!passwordEncoder.matches(rawPassword, encodedPassword)) {
             throw new BusinessException(ErrorCode.INVALID_CARD_PASSWORD);
@@ -247,9 +265,11 @@ public class CardService {
     }
 
     private Account findActiveAccount(String accountNumber) {
-        return accountRepository.findByAccountNumber(accountNumber)
-                .filter(a -> a.getStatus() == AccountStatus.ACTIVE)
-                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
+        Account account = accountQueryService.getAccountByNumber(accountNumber);
+        if (account.getStatus() != AccountStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.ACCOUNT_CLOSED);
+        }
+        return account;
     }
 
     private void verifyAccountPassword(String rawPassword, String encodedPassword) {

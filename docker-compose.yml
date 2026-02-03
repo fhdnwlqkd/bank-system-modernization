@@ -15,6 +15,12 @@ services:
     ports:
       - "3306:3306"
 
+  redis:
+    image: redis:latest
+    container_name: bank-redis
+    ports:
+      - "6379:6379"
+
   # Application Service
   app:
     build: .
@@ -22,6 +28,8 @@ services:
     depends_on:
       - db
     environment:
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PORT=6379
       - SPRING_DATASOURCE_URL=${DB_URL}
       - SPRING_DATASOURCE_USERNAME=${DB_USERNAME}
       - SPRING_DATASOURCE_PASSWORD=${DB_PASSWORD}

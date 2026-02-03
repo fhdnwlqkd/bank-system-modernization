@@ -17,7 +17,6 @@ public interface CardMapper {
     @Mapping(target = "transactionExternalId", source = "transaction.externalId")
     @Mapping(target = "maskedCardNumber", expression = "java(maskCardNumber(card.getCardNumber()))")
     @Mapping(target = "status", source = "payment.status")
-    @Mapping(target = "balanceAfter", source = "cardAccount.balance")
     @Mapping(target = "accountNumber", source = "cardAccount.accountNumber")
     @Mapping(target = "amount", source = "payment.amount")
     @Mapping(target = "createdAt", source = "payment.createdAt")
@@ -26,7 +25,8 @@ public interface CardMapper {
             Transaction transaction,
             Card card,
             Account cardAccount,
-            String merchantName
+            String merchantName,
+            Long balanceAfter
     );
 
     @Mapping(target = "refundExternalId", source = "refund.externalId")

@@ -41,25 +41,9 @@ public class Account extends BaseEntity {
     @Column(nullable = false)
     private AccountStatus status;
 
-//    @Version // 낙관적 락을 위한 버전 필드
-//    private Long version;
-
     // --- 비즈니스 로직 ---
-    public void deposit(Long amount) {
-        if (amount <= 0) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT);
-        }
-        this.balance += amount;
-    }
-
-    public void withdraw(Long amount) {
-        if (amount <= 0) {
-            throw new BusinessException(ErrorCode.INVALID_INPUT);
-        }
-        if (this.balance < amount) {
-            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
-        }
-        this.balance -= amount;
+    public void updateBalanceForView(Long realBalance) {
+        this.balance = realBalance;
     }
 
     public void close() {

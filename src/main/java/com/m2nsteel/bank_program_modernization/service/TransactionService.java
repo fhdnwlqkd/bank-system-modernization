@@ -6,12 +6,13 @@ import com.m2nsteel.bank_program_modernization.domain.Account;
 import com.m2nsteel.bank_program_modernization.domain.Transaction;
 import com.m2nsteel.bank_program_modernization.domain.TransactionItem;
 import com.m2nsteel.bank_program_modernization.domain.constant.AccountStatus;
-import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
 import com.m2nsteel.bank_program_modernization.repository.transaction.TransactionRepository;
+import com.m2nsteel.bank_program_modernization.service.listener.BalanceSyncEvent;
 import com.m2nsteel.bank_program_modernization.usecase.TransactionUsecase;
 import com.m2nsteel.bank_program_modernization.service.mapper.TransactionMapper;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,10 +23,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class TransactionService {
 
+    private final IdempotencyKeyService idempotencyKeyService;
     private final TransactionRepository transactionRepository;
-    private final AccountRepository accountRepository;
+    private final AccountQueryService accountQueryService;
     private final TransactionMapper transactionMapper;
     private final PasswordEncoder passwordEncoder;
+    private final RedisBalanceService redisBalanceService;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 입금 처리 (Deposit)
@@ -33,7 +37,7 @@ public class TransactionService {
     @Transactional
     public TransactionUsecase.GeneralResult deposit(TransactionUsecase.DepositCommand command, String memberExternalId) {
         // 1. 멱등성 검증
-        if(transactionRepository.existsByIdempotencyKey(command.idempotencyKey())){
+        if(idempotencyKeyService.isDuplicate(command.idempotencyKey())){
             throw new BusinessException(ErrorCode.REPEATED_REQUEST);
         }
 
@@ -41,13 +45,14 @@ public class TransactionService {
         Account account = findActiveAccountWithOwnership(command.accountNumber(), memberExternalId);
 
         // 3. 비즈니스 로직 수행
-        account.deposit(command.amount());
+        Long newBalance = redisBalanceService.increaseBalance(account.getId(), command.amount());
 
         // 4. 기록 저장
         Transaction transaction = Transaction.createDeposit(command.amount(), command.idempotencyKey());
-        TransactionItem item = TransactionItem.createDepositItem(transaction, account, command.amount(), 1);
+        TransactionItem item = TransactionItem.createDepositItem(transaction, account, command.amount(), 1, newBalance);
 
         transactionRepository.save(transaction);
+        eventPublisher.publishEvent(new BalanceSyncEvent(account.getId(), newBalance));
         return transactionMapper.toResult(transaction, item);
     }
 
@@ -57,7 +62,7 @@ public class TransactionService {
     @Transactional
     public TransactionUsecase.GeneralResult withdraw(TransactionUsecase.WithdrawCommand command, String memberExternalId) {
         // 1. 멱등성 검증
-        if(transactionRepository.existsByIdempotencyKey(command.idempotencyKey())){
+        if(idempotencyKeyService.isDuplicate(command.idempotencyKey())){
             throw new BusinessException(ErrorCode.REPEATED_REQUEST);
         }
 
@@ -66,13 +71,18 @@ public class TransactionService {
         verifyAccountPassword(command.accountPassword(), account.getAccountPassword());
 
         // 3. 비즈니스 로직 (잔액 부족 시 엔티티 내부에서 Exception 발생)
-        account.withdraw(command.amount());
+        Long newBalance = redisBalanceService.decreaseBalance(account.getId(), command.amount());
+        if(newBalance < 0){
+            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
+        }
 
         // 4. 기록 저장
         Transaction transaction = Transaction.createWithdrawal(command.amount(), command.idempotencyKey());
-        TransactionItem item = TransactionItem.createWithdrawalItem(transaction, account, command.amount(), 1);
+        TransactionItem item = TransactionItem.createWithdrawalItem(transaction, account, command.amount(), 1, newBalance);
 
         transactionRepository.save(transaction);
+        eventPublisher.publishEvent(new BalanceSyncEvent(account.getId(), newBalance));
+
         return transactionMapper.toResult(transaction, item);
     }
 
@@ -82,7 +92,7 @@ public class TransactionService {
     @Transactional
     public TransactionUsecase.TransferResult transfer(TransactionUsecase.TransferCommand command, String fromMemberExternalId) {
         // 1. 멱등성 검증
-        if(transactionRepository.existsByIdempotencyKey(command.idempotencyKey())){
+        if(idempotencyKeyService.isDuplicate(command.idempotencyKey())){
             throw new BusinessException(ErrorCode.REPEATED_REQUEST);
         }
 
@@ -92,15 +102,22 @@ public class TransactionService {
         verifyAccountPassword(command.accountPassword(), fromAccount.getAccountPassword());
 
         // 3. 양측 계좌 잔액 업데이트
-        fromAccount.withdraw(command.amount());
-        toAccount.deposit(command.amount());
+        Long fromNewBalance = redisBalanceService.decreaseBalance(fromAccount.getId(), command.amount());
+        if(fromNewBalance < 0){
+            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
+        }
+        Long toNewBalance = redisBalanceService.increaseBalance(toAccount.getId(), command.amount());
 
         // 4. 기록 저장
         Transaction transaction = Transaction.createTransfer(command.amount(), command.idempotencyKey());
-        TransactionItem withdrawItem = TransactionItem.createWithdrawalItem(transaction, fromAccount, command.amount(), 1);
-        TransactionItem depositItem = TransactionItem.createDepositItem(transaction, toAccount, command.amount(), 2);
+        TransactionItem withdrawItem = TransactionItem.createWithdrawalItem(transaction, fromAccount, command.amount(), 1, fromNewBalance);
+        TransactionItem depositItem = TransactionItem.createDepositItem(transaction, toAccount, command.amount(), 2, toNewBalance);
 
         transactionRepository.save(transaction);
+
+        eventPublisher.publishEvent(new BalanceSyncEvent(fromAccount.getId(), fromNewBalance));
+        eventPublisher.publishEvent(new BalanceSyncEvent(toAccount.getId(), toNewBalance));
+
         return transactionMapper.toTransferResult(transaction, withdrawItem, depositItem);
     }
 
@@ -114,9 +131,11 @@ public class TransactionService {
     }
 
     private Account findActiveAccount(String accountNumber) {
-        return accountRepository.findByAccountNumber(accountNumber)
-                .filter(a -> a.getStatus() == AccountStatus.ACTIVE)
-                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
+        Account account = accountQueryService.getAccountByNumber(accountNumber);
+        if (account.getStatus() != AccountStatus.ACTIVE) {
+            throw new BusinessException(ErrorCode.ACCOUNT_CLOSED);
+        }
+        return account;
     }
 
     private void verifyAccountPassword(String rawPassword, String encodedPassword) {

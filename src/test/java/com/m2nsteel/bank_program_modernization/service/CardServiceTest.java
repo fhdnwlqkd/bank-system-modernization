@@ -2,6 +2,7 @@ package com.m2nsteel.bank_program_modernization.service;
 
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
+import com.m2nsteel.bank_program_modernization.domain.Account;
 import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
 import com.m2nsteel.bank_program_modernization.repository.CardRepository;
 import com.m2nsteel.bank_program_modernization.repository.PaymentRepository;
@@ -10,6 +11,8 @@ import com.m2nsteel.bank_program_modernization.usecase.AccountUsecase;
 import com.m2nsteel.bank_program_modernization.usecase.CardUsecase;
 import com.m2nsteel.bank_program_modernization.usecase.MemberUsecase;
 import com.m2nsteel.bank_program_modernization.usecase.TransactionUsecase;
+import jakarta.persistence.EntityManager;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -27,6 +30,7 @@ class CardServiceTest {
 
     @Autowired private CardService cardService;
     @Autowired private MemberService memberService;
+    @Autowired private AccountQueryService accountQueryService;
     @Autowired private AccountService accountService;
     @Autowired private TransactionService transactionService;
 
@@ -34,6 +38,8 @@ class CardServiceTest {
     @Autowired private AccountRepository accountRepository;
     @Autowired private PaymentRepository paymentRepository;
     @Autowired private RefundRepository refundRepository;
+
+    @Autowired private EntityManager entityManager;
 
     private String memberId;
     private String merchantId;
@@ -99,14 +105,15 @@ class CardServiceTest {
 
         // Then: 결제 성공 확인
         assertThat(payResult.amount()).isEqualTo(10000L);
-        assertThat(accountRepository.findByAccountNumber(userAccountNo).get().getBalance()).isEqualTo(40000L);
+        assertThat(accountQueryService.getAccountByNumber(userAccountNo).getBalance()).isEqualTo(40000L);
 
         // Idempotency: 동일 키로 재결제 시도
         assertThatThrownBy(() -> {
             cardService.pay(payCmd, memberId);
         }).isInstanceOf(BusinessException.class)
           .hasFieldOrPropertyWithValue("errorCode", ErrorCode.REPEATED_REQUEST);
-        assertThat(accountRepository.findByAccountNumber(userAccountNo).get().getBalance()).isEqualTo(40000L); // 잔액 불변
+        assertThat(accountQueryService.getAccountByNumber(userAccountNo).getBalance()).isEqualTo(40000L); // 잔액 불변
+
 
         // --- [Step 3: 카드 환불 (부분 환불)] ---
         String refundKey = "refund-key-201";
@@ -116,14 +123,14 @@ class CardServiceTest {
 
         // Then: 환불 성공 확인 (사용자 잔액 복구)
         assertThat(refundResult.refundAmount()).isEqualTo(4000L);
-        assertThat(accountRepository.findByAccountNumber(userAccountNo).get().getBalance()).isEqualTo(44000L); // 40,000 + 4,000
+        assertThat(accountQueryService.getAccountByNumber(userAccountNo).getBalance()).isEqualTo(44000L); // 40,000 + 4,000
 
         // Idempotency: 동일 키로 재환불 시도
         assertThatThrownBy(() -> {
             cardService.refund(refundCmd);
         }).isInstanceOf(BusinessException.class)
           .hasFieldOrPropertyWithValue("errorCode", ErrorCode.REPEATED_REQUEST);
-        assertThat(accountRepository.findByAccountNumber(userAccountNo).get().getBalance()).isEqualTo(44000L); // 잔액 불변
+        assertThat(accountQueryService.getAccountByNumber(userAccountNo).getBalance()).isEqualTo(44000L); // 잔액 불변
     }
 
     @Test

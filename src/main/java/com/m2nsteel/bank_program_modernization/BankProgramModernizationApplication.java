@@ -2,7 +2,9 @@ package com.m2nsteel.bank_program_modernization;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableAsync;
 
+@EnableAsync
 @SpringBootApplication
 public class BankProgramModernizationApplication {
 

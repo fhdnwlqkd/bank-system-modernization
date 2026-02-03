@@ -27,6 +27,7 @@ class RefundServiceTest {
     @Autowired private CardService cardService;
     @Autowired private MemberService memberService;
     @Autowired private AccountService accountService;
+    @Autowired private AccountQueryService accountQueryService;
     @Autowired private TransactionService transactionService;
 
     @Autowired private AccountRepository accountRepository;
@@ -78,8 +79,7 @@ class RefundServiceTest {
         assertThat(result.remainingAmount()).isEqualTo(6000L); // 10,000 - 4,000
 
         // 4. Then: 실제 계좌 잔액 복구 확인 (90,000 + 4,000)
-        Account userAccount = accountRepository.findByAccountNumber(userAccNo).orElseThrow();
-        assertThat(userAccount.getBalance()).isEqualTo(94000L);
+        assertThat(accountQueryService.getAccountByNumber(userAccNo).getBalance()).isEqualTo(94000L);
     }
 
     @Test
@@ -98,8 +98,7 @@ class RefundServiceTest {
           .hasFieldOrPropertyWithValue("errorCode", ErrorCode.REPEATED_REQUEST);
 
         // 4. Then: 잔액이 두 번 복구되지 않았는지 확인 (90,000 + 5,000)
-        Account userAccount = accountRepository.findByAccountNumber(userAccNo).orElseThrow();
-        assertThat(userAccount.getBalance()).isEqualTo(95000L);
+        assertThat(accountQueryService.getAccountByNumber(userAccNo).getBalance()).isEqualTo(95000L);
     }
 
     @Test

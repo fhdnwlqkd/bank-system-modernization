@@ -30,20 +30,20 @@ public class TransactionItem extends BaseEntity {
     @Column(nullable = false, updatable = false)
     private Integer itemOrder;
 
-    public static TransactionItem createDepositItem(Transaction transaction, Account account, Long amount, int order) {
-        return create(transaction, account, amount, order);
+    public static TransactionItem createDepositItem(Transaction transaction, Account account, Long amount, int order, Long balanceAfter) {
+        return create(transaction, account, amount, order, balanceAfter);
     }
 
-    public static TransactionItem createWithdrawalItem(Transaction transaction, Account account, Long amount, int order) {
-        return create(transaction, account, -amount, order);
+    public static TransactionItem createWithdrawalItem(Transaction transaction, Account account, Long amount, int order, Long balanceAfter) {
+        return create(transaction, account, -amount, order, balanceAfter);
     }
 
-    private static TransactionItem create(Transaction transaction, Account account, Long delta, int order) {
+    private static TransactionItem create(Transaction transaction, Account account, Long delta, int order, Long balanceAfter) {
         TransactionItem item = TransactionItem.builder()
                 .transaction(transaction)
                 .account(account)
                 .delta(delta)
-                .balanceAfter(account.getBalance())
+                .balanceAfter(balanceAfter)
                 .itemOrder(order)
                 .build();
 

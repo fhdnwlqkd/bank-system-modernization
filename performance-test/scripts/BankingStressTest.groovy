@@ -227,8 +227,8 @@ class BankingStressTest {
 
         int count = 0
         file.eachLine { line, idx ->
-            if (idx == 1) return // 헤더 스킵 ㅋ
-            if (count >= limit) return // 설정한 limit에 도달하면 더 이상 추가 안 함 ㅋ
+            if (idx == 1) return // 헤더 스킵
+            if (count >= limit) return // 설정한 limit에 도달하면 더 이상 추가 안 함
 
             def c = line.split(',')
             if (fileName == "users.csv") {
@@ -236,7 +236,7 @@ class BankingStressTest {
             } else if (fileName == "super_merchants.csv") {
                 pool << [loginId: c[0], password: c[1], businessNumber: c[2]]
             }
-            count++ // 추가된 유저/가맹점 수 카운트 ㅋ
+            count++ // 추가된 유저/가맹점 수 카운트
         }
     }
 }

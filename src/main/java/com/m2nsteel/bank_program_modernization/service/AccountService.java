@@ -25,6 +25,7 @@ public class AccountService {
 
     private final MemberRepository memberRepository;
     private final AccountRepository accountRepository;
+    private final AccountQueryService accountQueryService;
     private final AccountMapper accountMapper;
     private final PasswordEncoder passwordEncoder;
     private final AccountNumberGenerator generator;
@@ -36,7 +37,7 @@ public class AccountService {
         Member member = memberRepository.findByExternalId(memberExternalId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
         // Member의 externalId로 연관된 모든 계좌를 조회합니다.
-        return accountRepository.findAllByMember(member)
+        return accountQueryService.findAllByMember(member)
                 .stream()
                 .map(accountMapper::toResult)
                 .toList();

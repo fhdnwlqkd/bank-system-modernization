@@ -5,6 +5,7 @@ import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
 import com.m2nsteel.bank_program_modernization.domain.Account;
 import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
 import com.m2nsteel.bank_program_modernization.repository.transaction.TransactionRepository;
+import com.m2nsteel.bank_program_modernization.service.AccountQueryService;
 import com.m2nsteel.bank_program_modernization.service.AccountService;
 import com.m2nsteel.bank_program_modernization.service.MemberService;
 import com.m2nsteel.bank_program_modernization.service.TransactionService;
@@ -28,6 +29,7 @@ class TransactionServiceTest {
     @Autowired private TransactionService transactionService;
     @Autowired private MemberService memberService;
     @Autowired private AccountService accountService;
+    @Autowired private AccountQueryService accountQueryService;
 
     @Autowired private AccountRepository accountRepository;
     @Autowired private TransactionRepository transactionRepository;
@@ -84,8 +86,8 @@ class TransactionServiceTest {
           .hasFieldOrPropertyWithValue("errorCode", ErrorCode.REPEATED_REQUEST);
 
         // 5. Then: 최종 원장 잔액 확인
-        Account senderFinal = accountRepository.findByAccountNumber(senderAccountNo).orElseThrow();
-        Account receiverFinal = accountRepository.findByAccountNumber(receiverAccountNo).orElseThrow();
+        Account senderFinal = accountQueryService.getAccountByNumber(senderAccountNo);
+        Account receiverFinal = accountQueryService.getAccountByNumber(receiverAccountNo);
 
         assertThat(senderFinal.getBalance()).isEqualTo(5000L); // 10,000 - 5,000
         assertThat(receiverFinal.getBalance()).isEqualTo(5000L); // 0 + 5,000
@@ -106,7 +108,7 @@ class TransactionServiceTest {
         // 3. Then: 결과 확인
         assertThat(result.amount()).isEqualTo(3000L);
 
-        Account finalAcc = accountRepository.findByAccountNumber(senderAccountNo).orElseThrow();
+        Account finalAcc = accountQueryService.getAccountByNumber(senderAccountNo);
         assertThat(finalAcc.getBalance()).isEqualTo(7000L);
     }
 

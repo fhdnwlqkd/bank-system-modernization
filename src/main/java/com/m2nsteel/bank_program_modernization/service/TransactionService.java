@@ -24,10 +24,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class TransactionService {
 
     private final IdempotencyKeyService idempotencyKeyService;
+    private final PasswordEncoder passwordEncoder;
     private final TransactionRepository transactionRepository;
+    private final RedisAccountService redisAccountService;
     private final AccountQueryService accountQueryService;
     private final TransactionMapper transactionMapper;
-    private final PasswordEncoder passwordEncoder;
     private final RedisBalanceService redisBalanceService;
     private final ApplicationEventPublisher eventPublisher;
 
@@ -42,17 +43,16 @@ public class TransactionService {
         }
 
         // 2. 검증 및 조회 (나의 계좌인지 확인)
-        Account account = findActiveAccountWithOwnership(command.accountNumber(), memberExternalId);
+        Account account = accountQueryService.getAccountByNumber(command.accountNumber());
 
         // 3. 비즈니스 로직 수행
-        Long newBalance = redisBalanceService.increaseBalance(account.getId(), command.amount());
+        Long newBalance = redisAccountService.updateBalance(account.getId(), command.amount(), true);
 
         // 4. 기록 저장
         Transaction transaction = Transaction.createDeposit(command.amount(), command.idempotencyKey());
         TransactionItem item = TransactionItem.createDepositItem(transaction, account, command.amount(), 1, newBalance);
 
         transactionRepository.save(transaction);
-        eventPublisher.publishEvent(new BalanceSyncEvent(account.getId(), newBalance));
         return transactionMapper.toResult(transaction, item);
     }
 
@@ -67,11 +67,11 @@ public class TransactionService {
         }
 
         // 2. 검증 및 조회
-        Account account = findActiveAccountWithOwnership(command.accountNumber(), memberExternalId);
+        Account account = accountQueryService.getAccountByNumber(command.accountNumber());
         verifyAccountPassword(command.accountPassword(), account.getAccountPassword());
 
         // 3. 비즈니스 로직 (잔액 부족 시 엔티티 내부에서 Exception 발생)
-        Long newBalance = redisBalanceService.decreaseBalance(account.getId(), command.amount());
+        Long newBalance = redisAccountService.updateBalance(account.getId(), command.amount(), false);
         if(newBalance < 0){
             throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
         }
@@ -81,7 +81,6 @@ public class TransactionService {
         TransactionItem item = TransactionItem.createWithdrawalItem(transaction, account, command.amount(), 1, newBalance);
 
         transactionRepository.save(transaction);
-        eventPublisher.publishEvent(new BalanceSyncEvent(account.getId(), newBalance));
 
         return transactionMapper.toResult(transaction, item);
     }
@@ -97,16 +96,16 @@ public class TransactionService {
         }
 
         // 2. 검증 및 조회 (출금 계좌 소유권 확인 & 입금 계좌 활성 확인)
-        Account fromAccount = findActiveAccountWithOwnership(command.fromAccountNumber(), fromMemberExternalId);
-        Account toAccount = findActiveAccount(command.toAccountNumber());
+        Account fromAccount = accountQueryService.getAccountByNumber(command.fromAccountNumber());
+        Account toAccount = accountQueryService.getAccountByNumber(command.toAccountNumber());
         verifyAccountPassword(command.accountPassword(), fromAccount.getAccountPassword());
 
         // 3. 양측 계좌 잔액 업데이트
-        Long fromNewBalance = redisBalanceService.decreaseBalance(fromAccount.getId(), command.amount());
-        if(fromNewBalance < 0){
+        Long fromNewBalance = redisAccountService.updateBalance(fromAccount.getId(), command.amount(), false);
+        if (fromNewBalance < 0){
             throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
         }
-        Long toNewBalance = redisBalanceService.increaseBalance(toAccount.getId(), command.amount());
+        Long toNewBalance = redisAccountService.updateBalance(toAccount.getId(), command.amount(), true);
 
         // 4. 기록 저장
         Transaction transaction = Transaction.createTransfer(command.amount(), command.idempotencyKey());

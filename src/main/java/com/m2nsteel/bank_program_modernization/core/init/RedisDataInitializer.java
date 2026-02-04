@@ -2,11 +2,11 @@ package com.m2nsteel.bank_program_modernization.core.init;
 
 import com.m2nsteel.bank_program_modernization.domain.Account;
 import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
+import com.m2nsteel.bank_program_modernization.service.RedisAccountService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.NullMarked;
 import org.springframework.boot.CommandLineRunner;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -18,25 +18,29 @@ import java.util.List;
 public class RedisDataInitializer implements CommandLineRunner {
 
     private final AccountRepository accountRepository;
-    private final StringRedisTemplate redisTemplate;
-    private static final String ACCOUNT_BALANCE_KEY = "acc:bal:";
+    private final RedisAccountService redisAccountService;
 
     @Override
     public void run(String... args) throws Exception {
-        log.info("[Redis Warm-up] DB 잔액 데이터를 레디스로 복사하기 시작합니다...");
+        log.info("[Redis Warm-up] DB 데이터를 기반으로 Redis 캐시 웜업을 시작합니다...");
 
-        // DB에서 모든 계좌 정보 조회
+        // 1. DB에서 모든 계좌와 연관된 Member 정보까지 한 번에 가져옵니다 
         List<Account> accounts = accountRepository.findAll();
 
-        for (Account account : accounts) {
-            String key = ACCOUNT_BALANCE_KEY + account.getId();
-            String balance = String.valueOf(account.getBalance());
-
-            // 2. 레디스에 잔액 저장
-            // 이미 데이터가 있으면 덮어쓰고, 없으면 새로 생성
-            redisTemplate.opsForValue().set(key, balance);
+        if (accounts.isEmpty()) {
+            log.info("[Redis Warm-up] 로드할 계좌 데이터가 없습니다. ");
+            return;
         }
 
-        log.info("[Redis Warm-up] 총 {}개의 계좌 잔액 데이터가 레디스에 로드되었습니다!", accounts.size());
+        // 2. 각 계좌를 순회하며 Redis에 3종 세트(객체, 번호매핑, 관계)를 저장합니다 
+        for (Account account : accounts) {
+            try {
+                redisAccountService.saveAccount(account, account.getMember());
+            } catch (Exception e) {
+                log.error("[Redis Warm-up] 계좌 캐싱 실패 - ID: {}, Error: {}", account.getId(), e.getMessage());
+            }
+        }
+
+        log.info("[Redis Warm-up] 총 {}개의 계좌 데이터 및 관계 인덱스 로드가 완료되었습니다! ", accounts.size());
     }
 }

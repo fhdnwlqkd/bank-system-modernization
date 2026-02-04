@@ -25,6 +25,7 @@ public class AccountService {
 
     private final MemberRepository memberRepository;
     private final AccountRepository accountRepository;
+    private final RedisAccountService redisAccountService;
     private final AccountQueryService accountQueryService;
     private final AccountMapper accountMapper;
     private final PasswordEncoder passwordEncoder;
@@ -76,8 +77,9 @@ public class AccountService {
                 encodedPassword,
                 member
         );
-
-        return accountMapper.toResult(accountRepository.save(account));
+        Account savedAccount = accountRepository.save(account);
+        redisAccountService.saveAccount(savedAccount, member);
+        return accountMapper.toResult(savedAccount);
     }
 
     /**
@@ -111,10 +113,12 @@ public class AccountService {
     // -- Helper Methods --
     private Account findMyAccount(String accountExternalId, String memberExternalId) {
         // 1. 인가 체크: 계좌 존재 여부 및 소유권 확인
-        Account account = accountRepository.findByExternalId(accountExternalId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
+        Member member = memberRepository.findByExternalId(memberExternalId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
 
-        if (!account.getMember().getExternalId().equals(memberExternalId)) {
+        Account account = accountQueryService.getAccountByMember(member);
+
+        if (!account.getExternalId().equals(accountExternalId)) {
             throw new BusinessException(ErrorCode.NOT_ACCOUNT_OWNER);
         }
         return account;

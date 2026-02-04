@@ -27,8 +27,8 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class CardService {
 
-    private final ApplicationEventPublisher eventPublisher;
     private final IdempotencyKeyService idempotencyKeyService;
+    private final RedisAccountService redisAccountService;
     private final RedisBalanceService redisBalanceService;
     private final AccountQueryService accountQueryService;
     private final CardRepository cardRepository;
@@ -150,7 +150,8 @@ public class CardService {
         Card card = findActiveCardWithOwnership(command.cardExternalId(), memberExternalId);
         verifyCardPassword(command.password(), card.getPassword());
 
-        Account userAccount = card.getAccount();
+        Long accountId = card.getAccount().getId();
+        Account userAccount = redisAccountService.getAccount(accountId);
         Merchant merchant = findMerchantByBusinessNumber(command.businessNumber());
         Account merchantAccount = accountQueryService.getAccountByMember(merchant);
 
@@ -159,11 +160,11 @@ public class CardService {
         }
 
         // 3. 실질적 자금 이동 (레디스 기반 잔액 차감)
-        Long userNewBalance = redisBalanceService.decreaseBalance(userAccount.getId(), command.amount());
+        Long userNewBalance = redisAccountService.updateBalance(userAccount.getId(), command.amount(), false);
         if (userNewBalance == -1L) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
         }
-        Long merchantNewBalance = redisBalanceService.increaseBalance(merchantAccount.getId(), command.amount());
+        Long merchantNewBalance = redisAccountService.updateBalance(merchantAccount.getId(), command.amount(), true);
 
         // 4. 원장 및 비즈니스 기록 저장
         Transaction transaction = Transaction.createPayment(command.amount(), command.idempotencyKey());
@@ -173,9 +174,6 @@ public class CardService {
 
         Payment payment = Payment.create(card, userAccount, merchant, merchantAccount, transaction, command.amount(), command.idempotencyKey());
         paymentRepository.save(payment);
-
-        eventPublisher.publishEvent(new BalanceSyncEvent(userAccount.getId(), userNewBalance));
-        eventPublisher.publishEvent(new BalanceSyncEvent(merchantAccount.getId(), merchantNewBalance));
 
         // 5. 결과 반환
         return cardMapper.toPaymentResult(payment, transaction, card, userAccount, merchant.getMerchantName(), userNewBalance);
@@ -198,8 +196,11 @@ public class CardService {
         payment.refund(command.amount());
 
         // 4. 실질적 자금 이동
-        Account merchantAccount = payment.getMerchantAccount();
-        Account userAccount = payment.getCard().getAccount();
+        Long merchantAccountId = payment.getMerchantAccount().getId();
+        Long userAccountId = payment.getCard().getAccount().getId();
+
+        Account merchantAccount = redisAccountService.getAccount(merchantAccountId);
+        Account userAccount = redisAccountService.getAccount(userAccountId);
 
         // 가맹점 잔액 차감 (Redis)
         Long merchantNewBalance = redisBalanceService.decreaseBalance(merchantAccount.getId(), command.amount());
@@ -217,9 +218,6 @@ public class CardService {
 
         Refund refund = Refund.create(payment, command.amount(), command.reason(), refundTransaction, command.idempotencyKey());
         refundRepository.save(refund);
-
-        eventPublisher.publishEvent(new BalanceSyncEvent(merchantAccount.getId(), merchantNewBalance));
-        eventPublisher.publishEvent(new BalanceSyncEvent(userAccount.getId(), userNewBalance));
 
         return cardMapper.toRefundResult(payment, refund, refundTransaction);
     }

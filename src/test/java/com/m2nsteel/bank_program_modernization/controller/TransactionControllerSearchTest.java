@@ -1,6 +1,7 @@
 package com.m2nsteel.bank_program_modernization.controller;
 
 import com.jayway.jsonpath.JsonPath;
+import com.m2nsteel.bank_program_modernization.TestRedisConfig;
 import com.m2nsteel.bank_program_modernization.dto.AuthDto;
 import com.m2nsteel.bank_program_modernization.service.AccountService;
 import com.m2nsteel.bank_program_modernization.service.MemberService;
@@ -9,6 +10,7 @@ import com.m2nsteel.bank_program_modernization.usecase.AccountUsecase;
 import com.m2nsteel.bank_program_modernization.usecase.CursorResult;
 import com.m2nsteel.bank_program_modernization.usecase.MemberUsecase;
 import com.m2nsteel.bank_program_modernization.usecase.TransactionUsecase;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -16,19 +18,25 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.json.AutoConfigureJson;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @AutoConfigureMockMvc
 @AutoConfigureJson
+@ActiveProfiles("test")
+@Import(TestRedisConfig.class)
 @Transactional
 class TransactionControllerSearchTest {
 
@@ -43,7 +51,13 @@ class TransactionControllerSearchTest {
     private String adminToken;
     private String userAccountExternalId;
     private String userAccountNumber;
+    @Autowired
+    private StringRedisTemplate redisTemplate;
 
+    @AfterEach
+    void tearDown() {
+        Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection().serverCommands().flushAll();
+    }
     @BeforeEach
     void setUp() throws Exception {
         // 1. 일반 사용자 데이터 셋업 (서비스 레이어 활용)

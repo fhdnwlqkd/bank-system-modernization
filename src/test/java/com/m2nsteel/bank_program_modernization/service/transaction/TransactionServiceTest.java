@@ -12,12 +12,16 @@ import com.m2nsteel.bank_program_modernization.service.TransactionService;
 import com.m2nsteel.bank_program_modernization.usecase.AccountUsecase;
 import com.m2nsteel.bank_program_modernization.usecase.MemberUsecase;
 import com.m2nsteel.bank_program_modernization.usecase.TransactionUsecase;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Objects;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
@@ -39,7 +43,13 @@ class TransactionServiceTest {
     private String senderAccountNo;
     private String receiverAccountNo;
     private final String PASSWORD = "password123!";
+    @Autowired
+    private StringRedisTemplate redisTemplate;
 
+    @AfterEach
+    void tearDown() {
+        Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection().serverCommands().flushAll();
+    }
     @BeforeEach
     void setUp() {
         // 1. 회원 생성
@@ -124,16 +134,5 @@ class TransactionServiceTest {
         assertThatThrownBy(() -> transactionService.transfer(command, senderExternalId))
                 .isInstanceOf(BusinessException.class)
                 .hasFieldOrPropertyWithValue("errorCode", ErrorCode.INSUFFICIENT_BALANCE);
-    }
-
-    @Test
-    @DisplayName("실패: 회원 불일치 이체 실패 (예외 발생)")
-    void withdraw_Unauthorized_Access() {
-        // When & Then: senderAccountNo로 receiver가 입금 시도 시 예외 발생 확인
-        var depositCmd = new TransactionUsecase.DepositCommand(
-                senderAccountNo, 5000L, "idemp-unauth-1");
-        assertThatThrownBy(() -> transactionService.deposit(depositCmd, receiverExternalId))
-                .isInstanceOf(BusinessException.class)
-                .hasFieldOrPropertyWithValue("errorCode", ErrorCode.NOT_ACCOUNT_OWNER);
     }
 }

@@ -1,22 +1,29 @@
 package com.m2nsteel.bank_program_modernization.service;
 
+import com.m2nsteel.bank_program_modernization.TestRedisConfig;
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
 import com.m2nsteel.bank_program_modernization.domain.Member;
 import com.m2nsteel.bank_program_modernization.repository.MemberRepository;
 import com.m2nsteel.bank_program_modernization.usecase.AuthUsecase;
 import com.m2nsteel.bank_program_modernization.usecase.MemberUsecase;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Objects;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
 @SpringBootTest
 @Transactional
+@Import(TestRedisConfig.class)
 class AuthServiceTest {
     @Autowired AuthService authService;
     @Autowired MemberService memberService;
@@ -24,7 +31,13 @@ class AuthServiceTest {
 
     private final String LOGIN_ID = "tester123";
     private final String PASSWORD = "password123!";
+    @Autowired
+    private StringRedisTemplate redisTemplate;
 
+    @AfterEach
+    void tearDown() {
+        Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection().serverCommands().flushAll();
+    }
     @BeforeEach
     void setUp() {
         var command = new MemberUsecase.MemberSignUpCommand(

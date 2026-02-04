@@ -1,6 +1,7 @@
 package com.m2nsteel.bank_program_modernization.controller;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.m2nsteel.bank_program_modernization.TestRedisConfig;
 import com.m2nsteel.bank_program_modernization.core.api.ExceptionResponse;
 import com.m2nsteel.bank_program_modernization.dto.AuthDto;
 import com.m2nsteel.bank_program_modernization.dto.CardDto;
@@ -8,6 +9,7 @@ import com.m2nsteel.bank_program_modernization.usecase.AccountUsecase;
 import com.m2nsteel.bank_program_modernization.service.MemberService;
 import com.m2nsteel.bank_program_modernization.service.AccountService;
 import com.m2nsteel.bank_program_modernization.usecase.MemberUsecase;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,12 +17,16 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.json.AutoConfigureJson;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Import;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.assertj.MockMvcTester;
 import org.springframework.transaction.annotation.Transactional;
 import tools.jackson.databind.json.JsonMapper;
 
+import java.util.Objects;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -28,6 +34,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @AutoConfigureMockMvc
 @AutoConfigureJson
+@ActiveProfiles("test")
+@Import(TestRedisConfig.class)
 @Transactional
 class CardControllerTest {
 
@@ -46,7 +54,13 @@ class CardControllerTest {
     private final String LOGIN_ID = "cardTester";
     private final String PW = "Password123!";
     private final String ACC_PW = "1234";
+    @Autowired
+    private StringRedisTemplate redisTemplate;
 
+    @AfterEach
+    void tearDown() {
+        Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection().serverCommands().flushAll();
+    }
     @BeforeEach
     void setUp() throws JsonProcessingException {
         // 1. Service Layer를 통한 데이터 준비

@@ -8,12 +8,10 @@ import com.m2nsteel.bank_program_modernization.domain.constant.*;
 import com.m2nsteel.bank_program_modernization.repository.*;
 import com.m2nsteel.bank_program_modernization.repository.merchant.MerchantRepository;
 import com.m2nsteel.bank_program_modernization.repository.transaction.TransactionRepository;
-import com.m2nsteel.bank_program_modernization.service.listener.BalanceSyncEvent;
 import com.m2nsteel.bank_program_modernization.service.mapper.CardMapper;
 import com.m2nsteel.bank_program_modernization.usecase.CardUsecase;
 import lombok.RequiredArgsConstructor;
 import org.jspecify.annotations.NullMarked;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,7 +27,6 @@ public class CardService {
 
     private final IdempotencyKeyService idempotencyKeyService;
     private final RedisAccountService redisAccountService;
-    private final RedisBalanceService redisBalanceService;
     private final AccountQueryService accountQueryService;
     private final CardRepository cardRepository;
     private final MerchantRepository merchantRepository;
@@ -203,13 +200,13 @@ public class CardService {
         Account userAccount = redisAccountService.getAccount(userAccountId);
 
         // 가맹점 잔액 차감 (Redis)
-        Long merchantNewBalance = redisBalanceService.decreaseBalance(merchantAccount.getId(), command.amount());
+        Long merchantNewBalance = redisAccountService.updateBalance(merchantAccount.getId(), command.amount(), false);
         if (merchantNewBalance == -1L) {
             throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
         }
 
         // 유저 잔액 증액 (Redis)
-        Long userNewBalance = redisBalanceService.increaseBalance(userAccount.getId(), command.amount());
+        Long userNewBalance = redisAccountService.updateBalance(userAccount.getId(), command.amount(), true);
 
         Transaction refundTransaction = Transaction.createRefund(command.amount(), command.idempotencyKey());
         TransactionItem.createWithdrawalItem(refundTransaction, merchantAccount, command.amount(), 1, merchantNewBalance);

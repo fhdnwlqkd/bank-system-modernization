@@ -29,7 +29,6 @@ public class TransactionService {
     private final RedisAccountService redisAccountService;
     private final AccountQueryService accountQueryService;
     private final TransactionMapper transactionMapper;
-    private final RedisBalanceService redisBalanceService;
     private final ApplicationEventPublisher eventPublisher;
 
     /**

@@ -31,96 +31,74 @@ public class AccountService {
     private final PasswordEncoder passwordEncoder;
     private final AccountNumberGenerator generator;
 
-    /**
-     * 계좌 조회
-     */
     public List<AccountUsecase.AccountResult> getMyAccounts(String memberExternalId) {
-        Member member = memberRepository.findByExternalId(memberExternalId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
-        // Member의 externalId로 연관된 모든 계좌를 조회합니다.
-        return accountQueryService.findAllByMember(member)
-                .stream()
-                .map(accountMapper::toResult)
-                .toList();
+        // 1. Redis에서 회원 목록 조회 시도 
+        List<Account> accounts = redisAccountService.getAccountsByMember(memberExternalId);
+
+        if (accounts.isEmpty()) {
+            Member member = memberRepository.findByExternalId(memberExternalId)
+                    .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+            accounts = accountQueryService.findAllByMember(member);
+            accounts.forEach(acc -> redisAccountService.saveAccount(acc, member));
+        }
+
+        return accounts.stream().map(accountMapper::toResult).toList();
     }
 
-    /**
-     * 특정 계좌 상세 조회
-     */
     public AccountUsecase.AccountResult getAccountDetail(String accountExternalId, String memberExternalId) {
-        // 1. 계좌 및 회원 조회
         Account account = findMyAccount(accountExternalId, memberExternalId);
         return accountMapper.toResult(account);
     }
 
-    /**
-     * 신규 계좌 개설
-     */
     @Transactional
     public AccountUsecase.AccountResult createAccount(AccountUsecase.AccountCreateCommand command) {
-        // 1. 회원 조회 (externalId 기준)
         Member member = memberRepository.findByExternalId(command.memberExternalId())
                 .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
-        if(!member.isActive()) {
-            throw new BusinessException(ErrorCode.MEMBER_NOT_ACTIVE);
-        }
 
-        // 2. 계좌번호 생성
-        String accountNumber = generator.generate();
+        if(!member.isActive()) throw new BusinessException(ErrorCode.MEMBER_NOT_ACTIVE);
 
-        // 2. 비밀번호 암호화
-        String encodedPassword = passwordEncoder.encode(command.accountPassword());
-
-        // 3. 계좌 엔티티 생성
-        Account account = Account.create(
-                accountNumber,
-                encodedPassword,
-                member
-        );
+        Account account = Account.create(generator.generate(), passwordEncoder.encode(command.accountPassword()), member);
         Account savedAccount = accountRepository.save(account);
+
+        // 캐시 즉시 반영 
         redisAccountService.saveAccount(savedAccount, member);
         return accountMapper.toResult(savedAccount);
     }
 
-    /**
-     * 계좌 비밀번호 변경
-     */
     @Transactional
     public AccountUsecase.AccountResult changePassword(AccountUsecase.AccountChangePasswordCommand command, String accountExternalId, String memberExternalId) {
-        // 1. 계좌 및 회원 조회
         Account account = findMyAccount(accountExternalId, memberExternalId);
-        // 2. 현재 비밀번호 검증
         if (!passwordEncoder.matches(command.password(), account.getAccountPassword())) {
             throw new BusinessException(ErrorCode.INVALID_PASSWORD);
         }
-        // 3. 비밀번호 변경
         account.changePassword(passwordEncoder.encode(command.newPassword()));
+
+        // 상태 변경 후 캐시 갱신 
+        redisAccountService.saveAccount(account, account.getMember());
         return accountMapper.toResult(account);
     }
 
-    /**
-     * 계좌 정지
-     */
     @Transactional
     public AccountUsecase.AccountResult close(String accountExternalId, String memberExternalId) {
-        // 1. 계좌 및 회원 조회
         Account account = findMyAccount(accountExternalId, memberExternalId);
         account.close();
+        redisAccountService.saveAccount(account, account.getMember());
         return accountMapper.toResult(account);
     }
 
-
-    // -- Helper Methods --
     private Account findMyAccount(String accountExternalId, String memberExternalId) {
-        // 1. 인가 체크: 계좌 존재 여부 및 소유권 확인
-        Member member = memberRepository.findByExternalId(memberExternalId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
-
-        Account account = accountQueryService.getAccountByMember(member);
-
-        if (!account.getExternalId().equals(accountExternalId)) {
-            throw new BusinessException(ErrorCode.NOT_ACCOUNT_OWNER);
-        }
-        return account;
+        // Redis 우선 조회 
+        return redisAccountService.getAccount(accountExternalId)
+                .filter(acc -> acc.getMember().getExternalId().equals(memberExternalId))
+                .orElseGet(() -> {
+                    Member member = memberRepository.findByExternalId(memberExternalId)
+                            .orElseThrow(() -> new BusinessException(ErrorCode.MEMBER_NOT_FOUND));
+                    Account dbAccount = accountQueryService.getAccountByMember(member);
+                    if (!dbAccount.getExternalId().equals(accountExternalId)) {
+                        throw new BusinessException(ErrorCode.NOT_ACCOUNT_OWNER);
+                    }
+                    redisAccountService.saveAccount(dbAccount, member);
+                    return dbAccount;
+                });
     }
 }

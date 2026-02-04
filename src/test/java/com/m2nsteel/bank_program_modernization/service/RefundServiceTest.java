@@ -1,8 +1,8 @@
 package com.m2nsteel.bank_program_modernization.service;
 
+import com.m2nsteel.bank_program_modernization.TestRedisConfig;
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
-import com.m2nsteel.bank_program_modernization.domain.Account;
 import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
 import com.m2nsteel.bank_program_modernization.repository.PaymentRepository;
 import com.m2nsteel.bank_program_modernization.repository.RefundRepository;
@@ -10,18 +10,24 @@ import com.m2nsteel.bank_program_modernization.usecase.AccountUsecase;
 import com.m2nsteel.bank_program_modernization.usecase.CardUsecase;
 import com.m2nsteel.bank_program_modernization.usecase.MemberUsecase;
 import com.m2nsteel.bank_program_modernization.usecase.TransactionUsecase;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Objects;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 @SpringBootTest
 @Transactional
+@Import(TestRedisConfig.class)
 class RefundServiceTest {
 
     @Autowired private CardService cardService;
@@ -40,7 +46,13 @@ class RefundServiceTest {
     private String merchantBrn = "123-45-67890";
     private final String PASS = "password123!";
     private final String CARD_PASS = "1234";
+    @Autowired
+    private StringRedisTemplate redisTemplate;
 
+    @AfterEach
+    void tearDown() {
+        Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection().serverCommands().flushAll();
+    }
     @BeforeEach
     void setUp() {
         // 1. Given: 사용자 및 계좌 준비

@@ -1,7 +1,6 @@
 package com.m2nsteel.bank_program_modernization.controller;
 
 import com.jayway.jsonpath.JsonPath;
-import com.m2nsteel.bank_program_modernization.TestRedisConfig;
 import com.m2nsteel.bank_program_modernization.dto.AuthDto;
 import com.m2nsteel.bank_program_modernization.dto.MerchantDto;
 import com.m2nsteel.bank_program_modernization.service.*;
@@ -14,7 +13,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.json.AutoConfigureJson;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -32,8 +30,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @AutoConfigureMockMvc
 @AutoConfigureJson
-@ActiveProfiles("test")
-@Import(TestRedisConfig.class)
 @Transactional
 class MerchantControllerTest {
 
@@ -49,13 +45,7 @@ class MerchantControllerTest {
     private final String MERCHANT_ID = "merchant123";
     private final String PASSWORD = "password123!";
     private final String BRN = "123-45-67890";
-    @Autowired
-    private StringRedisTemplate redisTemplate;
 
-    @AfterEach
-    void tearDown() {
-        Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection().serverCommands().flushAll();
-    }
     @BeforeEach
     void setUp() throws Exception {
         // 1. 가맹점주 및 상점 등록

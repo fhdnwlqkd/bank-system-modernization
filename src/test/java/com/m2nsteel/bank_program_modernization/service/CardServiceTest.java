@@ -1,6 +1,5 @@
 package com.m2nsteel.bank_program_modernization.service;
 
-import com.m2nsteel.bank_program_modernization.TestRedisConfig;
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
 import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
@@ -15,23 +14,17 @@ import jakarta.persistence.EntityManager;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Objects;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 @SpringBootTest
 @Transactional
-@Import(TestRedisConfig.class)
 class CardServiceTest {
 
     @Autowired private CardService cardService;
     @Autowired private MemberService memberService;
-    @Autowired private AccountQueryService accountQueryService;
     @Autowired private AccountService accountService;
     @Autowired private TransactionService transactionService;
 
@@ -48,13 +41,7 @@ class CardServiceTest {
     private String merchantAccountNo;
     private final String PASSWORD = "password123!";
     private final String CARD_PASS = "1234";
-    @Autowired
-    private StringRedisTemplate redisTemplate;
 
-    @AfterEach
-    void tearDown() {
-        Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection().serverCommands().flushAll();
-    }
     @BeforeEach
     void setUp() {
         // 1. Given: 일반 사용자 및 가맹점 가입
@@ -112,15 +99,14 @@ class CardServiceTest {
 
         // Then: 결제 성공 확인
         assertThat(payResult.amount()).isEqualTo(10000L);
-        assertThat(accountQueryService.getAccountByNumber(userAccountNo).getBalance()).isEqualTo(40000L);
+        assertThat(accountService.getAccountByNumber(userAccountNo, memberId).balance()).isEqualTo(40000L); // 잔액 일치 확인
 
         // Idempotency: 동일 키로 재결제 시도
         assertThatThrownBy(() -> {
             cardService.pay(payCmd, memberId);
         }).isInstanceOf(BusinessException.class)
           .hasFieldOrPropertyWithValue("errorCode", ErrorCode.REPEATED_REQUEST);
-        assertThat(accountQueryService.getAccountByNumber(userAccountNo).getBalance()).isEqualTo(40000L); // 잔액 불변
-
+        assertThat(accountService.getAccountByNumber(userAccountNo, memberId).balance()).isEqualTo(40000L); // 잔액 불변
 
         // --- [Step 3: 카드 환불 (부분 환불)] ---
         String refundKey = "refund-key-201";
@@ -130,14 +116,14 @@ class CardServiceTest {
 
         // Then: 환불 성공 확인 (사용자 잔액 복구)
         assertThat(refundResult.refundAmount()).isEqualTo(4000L);
-        assertThat(accountQueryService.getAccountByNumber(userAccountNo).getBalance()).isEqualTo(44000L); // 40,000 + 4,000
+        assertThat(accountService.getAccountByNumber(userAccountNo, memberId).balance()).isEqualTo(44000L); // 잔액 복구 확인
 
         // Idempotency: 동일 키로 재환불 시도
         assertThatThrownBy(() -> {
             cardService.refund(refundCmd);
         }).isInstanceOf(BusinessException.class)
           .hasFieldOrPropertyWithValue("errorCode", ErrorCode.REPEATED_REQUEST);
-        assertThat(accountQueryService.getAccountByNumber(userAccountNo).getBalance()).isEqualTo(44000L); // 잔액 불변
+        assertThat(accountService.getAccountByNumber(userAccountNo, memberId).balance()).isEqualTo(44000L); // 잔액 불변
     }
 
     @Test

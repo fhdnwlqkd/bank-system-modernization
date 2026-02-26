@@ -1,7 +1,6 @@
 package com.m2nsteel.bank_program_modernization.controller;
 
 import com.jayway.jsonpath.JsonPath;
-import com.m2nsteel.bank_program_modernization.TestRedisConfig;
 import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
 import com.m2nsteel.bank_program_modernization.dto.AuthDto;
 import com.m2nsteel.bank_program_modernization.dto.CardDto;
@@ -18,7 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.json.AutoConfigureJson;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
-import org.springframework.context.annotation.Import;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -36,8 +34,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 @SpringBootTest
 @AutoConfigureMockMvc
 @AutoConfigureJson
-@ActiveProfiles("test")
-@Import(TestRedisConfig.class)
 @Transactional
 class PaymentAndRefundControllerTest {
 
@@ -56,13 +52,7 @@ class PaymentAndRefundControllerTest {
 
     private final String PASSWORD = "password123!";
     private final String CARD_PASS = "1234";
-    @Autowired
-    private StringRedisTemplate redisTemplate;
 
-    @AfterEach
-    void tearDown() {
-        Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection().serverCommands().flushAll();
-    }
     @BeforeEach
     void setUp() throws Exception {
         // 1. 서비스 레이어를 통해 테스트 데이터 준비

@@ -1,30 +1,24 @@
 package com.m2nsteel.bank_program_modernization.service;
 
-import com.m2nsteel.bank_program_modernization.TestRedisConfig;
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
 import com.m2nsteel.bank_program_modernization.domain.constant.PaymentStatus;
 import com.m2nsteel.bank_program_modernization.repository.PaymentRepository;
 import com.m2nsteel.bank_program_modernization.usecase.*;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest
 @Transactional
-@Import(TestRedisConfig.class)
 class MerchantSalesServiceTest {
 
     @Autowired private MerchantSalesService merchantSalesService;
@@ -38,13 +32,7 @@ class MerchantSalesServiceTest {
     private String merchantBizNo = "111-22-33333";
     private String userId;
     private String userCardId;
-    @Autowired
-    private StringRedisTemplate redisTemplate;
 
-    @AfterEach
-    void tearDown() {
-        Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection().serverCommands().flushAll();
-    }
     @BeforeEach
     void setUp() {
         // 1. 가맹점주(Merchant Owner) 생성

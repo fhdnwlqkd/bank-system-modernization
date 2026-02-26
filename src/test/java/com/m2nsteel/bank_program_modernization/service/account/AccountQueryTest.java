@@ -1,6 +1,5 @@
 package com.m2nsteel.bank_program_modernization.service.account;
 
-import com.m2nsteel.bank_program_modernization.TestRedisConfig;
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
 import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
@@ -8,25 +7,20 @@ import com.m2nsteel.bank_program_modernization.service.AccountService;
 import com.m2nsteel.bank_program_modernization.service.MemberService;
 import com.m2nsteel.bank_program_modernization.usecase.AccountUsecase;
 import com.m2nsteel.bank_program_modernization.usecase.MemberUsecase;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.Objects;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.assertj.core.api.AssertionsForInterfaceTypes.assertThat;
 
 @SpringBootTest
 @Transactional
-@Import(TestRedisConfig.class)
 public class AccountQueryTest {
     @Autowired private AccountService accountService;
     @Autowired private MemberService memberService;
@@ -35,13 +29,7 @@ public class AccountQueryTest {
     private String memberAId;
     private String memberBId;
     private final String PASS = "password123!";
-    @Autowired
-    private StringRedisTemplate redisTemplate;
 
-    @AfterEach
-    void tearDown() {
-        Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection().serverCommands().flushAll();
-    }
     @BeforeEach
     void setUp() {
         // 1. Given: 두 명의 사용자 가입

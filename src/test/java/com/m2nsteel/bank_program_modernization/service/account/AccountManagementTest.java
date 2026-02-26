@@ -1,6 +1,5 @@
 package com.m2nsteel.bank_program_modernization.service.account;
 
-import com.m2nsteel.bank_program_modernization.TestRedisConfig;
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
 import com.m2nsteel.bank_program_modernization.domain.constant.AccountStatus;
@@ -9,25 +8,19 @@ import com.m2nsteel.bank_program_modernization.service.AccountService;
 import com.m2nsteel.bank_program_modernization.service.MemberService;
 import com.m2nsteel.bank_program_modernization.usecase.AccountUsecase;
 import com.m2nsteel.bank_program_modernization.usecase.MemberUsecase;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Objects;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 @SpringBootTest
 @Transactional
-@Import(TestRedisConfig.class)
 class AccountManagementTest {
 
     @Autowired private AccountService accountService;
@@ -39,13 +32,6 @@ class AccountManagementTest {
     private String accountId;
     private final String OLD_PASS = "old-pass-123!";
     private final String NEW_PASS = "new-pass-456!";
-    @Autowired
-    private StringRedisTemplate redisTemplate;
-
-    @AfterEach
-    void tearDown() {
-        Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection().serverCommands().flushAll();
-    }
     @BeforeEach
     void setUp() {
         // 1. Given: 사용자 가입 및 계좌 생성

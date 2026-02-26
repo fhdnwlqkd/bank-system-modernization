@@ -8,17 +8,13 @@ import com.m2nsteel.bank_program_modernization.usecase.AccountUsecase;
 import com.m2nsteel.bank_program_modernization.usecase.CardUsecase;
 import com.m2nsteel.bank_program_modernization.usecase.MemberUsecase;
 import com.m2nsteel.bank_program_modernization.usecase.TransactionUsecase;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Objects;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -44,13 +40,6 @@ class TransactionSearchServiceTest {
     private final String PASS = "password123!";
     private final String CARD_PASS = "1234";
     private final String MERCHANT_BIZ_NO = "123-45-67890";
-    @Autowired
-    private StringRedisTemplate redisTemplate;
-
-    @AfterEach
-    void tearDown() {
-        Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection().serverCommands().flushAll();
-    }
     @BeforeEach
     void setUp() {
         // 1. 송금인(User) 및 수취인(Receiver) 가입

@@ -1,6 +1,5 @@
 package com.m2nsteel.bank_program_modernization.service;
 
-import com.m2nsteel.bank_program_modernization.TestRedisConfig;
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
 import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
@@ -10,30 +9,23 @@ import com.m2nsteel.bank_program_modernization.usecase.AccountUsecase;
 import com.m2nsteel.bank_program_modernization.usecase.CardUsecase;
 import com.m2nsteel.bank_program_modernization.usecase.MemberUsecase;
 import com.m2nsteel.bank_program_modernization.usecase.TransactionUsecase;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Objects;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 @SpringBootTest
 @Transactional
-@Import(TestRedisConfig.class)
 class RefundServiceTest {
 
     @Autowired private CardService cardService;
     @Autowired private MemberService memberService;
     @Autowired private AccountService accountService;
-    @Autowired private AccountQueryService accountQueryService;
     @Autowired private TransactionService transactionService;
 
     @Autowired private AccountRepository accountRepository;
@@ -46,13 +38,7 @@ class RefundServiceTest {
     private String merchantBrn = "123-45-67890";
     private final String PASS = "password123!";
     private final String CARD_PASS = "1234";
-    @Autowired
-    private StringRedisTemplate redisTemplate;
 
-    @AfterEach
-    void tearDown() {
-        Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection().serverCommands().flushAll();
-    }
     @BeforeEach
     void setUp() {
         // 1. Given: 사용자 및 계좌 준비
@@ -91,7 +77,7 @@ class RefundServiceTest {
         assertThat(result.remainingAmount()).isEqualTo(6000L); // 10,000 - 4,000
 
         // 4. Then: 실제 계좌 잔액 복구 확인 (90,000 + 4,000)
-        assertThat(accountQueryService.getAccountByNumber(userAccNo).getBalance()).isEqualTo(94000L);
+        assertThat(accountService.getAccountByNumber(userAccNo, memberId).balance()).isEqualTo(94000L);
     }
 
     @Test
@@ -110,7 +96,7 @@ class RefundServiceTest {
           .hasFieldOrPropertyWithValue("errorCode", ErrorCode.REPEATED_REQUEST);
 
         // 4. Then: 잔액이 두 번 복구되지 않았는지 확인 (90,000 + 5,000)
-        assertThat(accountQueryService.getAccountByNumber(userAccNo).getBalance()).isEqualTo(95000L);
+        assertThat(accountService.getAccountByNumber(userAccNo, memberId).balance()).isEqualTo(95000L);
     }
 
     @Test

@@ -26,8 +26,7 @@ import java.util.List;
 public class CardService {
 
     private final IdempotencyKeyService idempotencyKeyService;
-    private final RedisAccountService redisAccountService;
-    private final AccountQueryService accountQueryService;
+    private final AccountRepository accountRepository;
     private final CardRepository cardRepository;
     private final MerchantRepository merchantRepository;
     private final TransactionRepository transactionRepository;
@@ -75,7 +74,6 @@ public class CardService {
                     return cardMapper.toPaymentSummary(payment, card, merchantName);
                 })
                 .toList();
-
     }
 
     /**
@@ -139,7 +137,7 @@ public class CardService {
     @Transactional
     public CardUsecase.CardPaymentResult pay(CardUsecase.CardPaymentCommand command, String memberExternalId) {
         // 1. 멱등성 검증
-        if(idempotencyKeyService.isDuplicate(command.idempotencyKey())) {
+        if(paymentRepository.existsByIdempotencyKey(command.idempotencyKey())) {
             throw new BusinessException(ErrorCode.REPEATED_REQUEST);
         }
 
@@ -147,33 +145,29 @@ public class CardService {
         Card card = findActiveCardWithOwnership(command.cardExternalId(), memberExternalId);
         verifyCardPassword(command.password(), card.getPassword());
 
-        Long accountId = card.getAccount().getId();
-        Account userAccount = redisAccountService.getAccount(accountId);
+        Account userAccount = card.getAccount();
         Merchant merchant = findMerchantByBusinessNumber(command.businessNumber());
-        Account merchantAccount = accountQueryService.getAccountByMember(merchant);
+        Account merchantAccount = findMerchantAccount(merchant);
 
         if (userAccount.getId().equals(merchantAccount.getId())) {
             throw new BusinessException(ErrorCode.SELF_PAYMENT_NOT_ALLOWED);
         }
 
-        // 3. 실질적 자금 이동 (레디스 기반 잔액 차감)
-        Long userNewBalance = redisAccountService.updateBalance(userAccount.getId(), command.amount(), false);
-        if (userNewBalance == -1L) {
-            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
-        }
-        Long merchantNewBalance = redisAccountService.updateBalance(merchantAccount.getId(), command.amount(), true);
+        // 3. 실질적 자금 이동
+        userAccount.withdraw(command.amount());
+        merchantAccount.deposit(command.amount());
 
         // 4. 원장 및 비즈니스 기록 저장
         Transaction transaction = Transaction.createPayment(command.amount(), command.idempotencyKey());
-        TransactionItem.createWithdrawalItem(transaction, userAccount, command.amount(), 1, userNewBalance);
-        TransactionItem.createDepositItem(transaction, merchantAccount, command.amount(), 2, merchantNewBalance);
+        TransactionItem.createWithdrawalItem(transaction, userAccount, command.amount(), 1, userAccount.getBalance());
+        TransactionItem.createDepositItem(transaction, merchantAccount, command.amount(), 2, merchantAccount.getBalance());
         transactionRepository.save(transaction);
 
         Payment payment = Payment.create(card, userAccount, merchant, merchantAccount, transaction, command.amount(), command.idempotencyKey());
         paymentRepository.save(payment);
 
-        // 5. 결과 반환
-        return cardMapper.toPaymentResult(payment, transaction, card, userAccount, merchant.getMerchantName(), userNewBalance);
+        // 5. 신규 처리이므로 isRepeated = false
+        return cardMapper.toPaymentResult(payment, transaction, card, userAccount, merchant.getMerchantName(), userAccount.getBalance());
     }
 
     /**
@@ -182,7 +176,7 @@ public class CardService {
     @Transactional
     public CardUsecase.RefundResult refund(CardUsecase.RefundCommand command) {
         // 1. 멱등성 검증
-        if(idempotencyKeyService.isDuplicate(command.idempotencyKey())) {
+        if(refundRepository.existsByIdempotencyKey(command.idempotencyKey())) {
             throw new BusinessException(ErrorCode.REPEATED_REQUEST);
         }
         // 2. 신규 환불 로직 수행
@@ -193,24 +187,15 @@ public class CardService {
         payment.refund(command.amount());
 
         // 4. 실질적 자금 이동
-        Long merchantAccountId = payment.getMerchantAccount().getId();
-        Long userAccountId = payment.getCard().getAccount().getId();
+        Account merchantAccount = payment.getMerchantAccount();
+        Account userAccount = payment.getCard().getAccount();
 
-        Account merchantAccount = redisAccountService.getAccount(merchantAccountId);
-        Account userAccount = redisAccountService.getAccount(userAccountId);
-
-        // 가맹점 잔액 차감 (Redis)
-        Long merchantNewBalance = redisAccountService.updateBalance(merchantAccount.getId(), command.amount(), false);
-        if (merchantNewBalance == -1L) {
-            throw new BusinessException(ErrorCode.INSUFFICIENT_BALANCE);
-        }
-
-        // 유저 잔액 증액 (Redis)
-        Long userNewBalance = redisAccountService.updateBalance(userAccount.getId(), command.amount(), true);
+        merchantAccount.withdraw(command.amount());
+        userAccount.deposit(command.amount());
 
         Transaction refundTransaction = Transaction.createRefund(command.amount(), command.idempotencyKey());
-        TransactionItem.createWithdrawalItem(refundTransaction, merchantAccount, command.amount(), 1, merchantNewBalance);
-        TransactionItem.createDepositItem(refundTransaction, userAccount, command.amount(), 2, userNewBalance);
+        TransactionItem.createWithdrawalItem(refundTransaction, merchantAccount, command.amount(), 1, merchantAccount.getBalance());
+        TransactionItem.createDepositItem(refundTransaction, userAccount, command.amount(), 2, userAccount.getBalance());
         transactionRepository.save(refundTransaction);
 
         Refund refund = Refund.create(payment, command.amount(), command.reason(), refundTransaction, command.idempotencyKey());
@@ -242,6 +227,11 @@ public class CardService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.MERCHANT_NOT_FOUND));
     }
 
+    private Account findMerchantAccount(Member merchant) {
+        return accountRepository.findByMember(merchant)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
+    }
+
     private void verifyCardPassword(String rawPassword, String encodedPassword) {
         if (!passwordEncoder.matches(rawPassword, encodedPassword)) {
             throw new BusinessException(ErrorCode.INVALID_CARD_PASSWORD);
@@ -257,11 +247,9 @@ public class CardService {
     }
 
     private Account findActiveAccount(String accountNumber) {
-        Account account = accountQueryService.getAccountByNumber(accountNumber);
-        if (account.getStatus() != AccountStatus.ACTIVE) {
-            throw new BusinessException(ErrorCode.ACCOUNT_CLOSED);
-        }
-        return account;
+        return accountRepository.findByAccountNumber(accountNumber)
+                .filter(a -> a.getStatus() == AccountStatus.ACTIVE)
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
     }
 
     private void verifyAccountPassword(String rawPassword, String encodedPassword) {

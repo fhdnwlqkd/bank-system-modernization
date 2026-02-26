@@ -1,6 +1,5 @@
 package com.m2nsteel.bank_program_modernization.service.account;
 
-import com.m2nsteel.bank_program_modernization.TestRedisConfig;
 import com.m2nsteel.bank_program_modernization.core.exception.BusinessException;
 import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
 import com.m2nsteel.bank_program_modernization.domain.Member;
@@ -11,18 +10,13 @@ import com.m2nsteel.bank_program_modernization.usecase.AccountUsecase;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.context.annotation.Import;
-import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Objects;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 @SpringBootTest
 @Transactional
-@Import(TestRedisConfig.class)
 class AccountServiceTest {
 
     @Autowired
@@ -35,13 +29,6 @@ class AccountServiceTest {
     private AccountRepository accountRepository;
 
     private Member savedMember;
-    @Autowired
-    private StringRedisTemplate redisTemplate;
-
-    @AfterEach
-    void tearDown() {
-        Objects.requireNonNull(redisTemplate.getConnectionFactory()).getConnection().serverCommands().flushAll();
-    }
     @BeforeEach
     void setUp() {
         // 테스트용 회원 미리 생성

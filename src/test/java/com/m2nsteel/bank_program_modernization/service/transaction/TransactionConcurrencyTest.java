@@ -86,7 +86,7 @@ class TransactionConcurrencyTest {
     @Test
     @DisplayName("동시 출금 테스트: 10만원에서 100명이 동시에 1,000원씩 출금하면 0원이 되어야 한다")
     void concurrent_withdraw_test() throws InterruptedException {
-        // 초기 잔액 10만원 입금 ㅋ
+        // 초기 잔액 10만원 입금
         transactionService.deposit(new TransactionUsecase.DepositCommand(senderAccountNo, 100_000L, "init-key"), senderExternalId);
 
         int threadCount = 100;

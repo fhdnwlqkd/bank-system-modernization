@@ -145,15 +145,19 @@ public class CardService {
         Card card = findActiveCardWithOwnership(command.cardExternalId(), memberExternalId);
         verifyCardPassword(command.password(), card.getPassword());
 
-        Account userAccount = card.getAccount();
+        Account userAcc = card.getAccount();
         Merchant merchant = findMerchantByBusinessNumber(command.businessNumber());
-        Account merchantAccount = findMerchantAccount(merchant);
+        Account merchantAcc = findMerchantAccount(merchant);
 
-        if (userAccount.getId().equals(merchantAccount.getId())) {
+        if (userAcc.getId().equals(merchantAcc.getId())) {
             throw new BusinessException(ErrorCode.SELF_PAYMENT_NOT_ALLOWED);
         }
 
         // 3. 실질적 자금 이동
+        Account userAccount = accountRepository.findActiveByAccountNumberForUpdate(userAcc.getAccountNumber())
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
+        Account merchantAccount = accountRepository.findActiveByAccountNumberForUpdate(merchantAcc.getAccountNumber())
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
         userAccount.withdraw(command.amount());
         merchantAccount.deposit(command.amount());
 
@@ -187,9 +191,13 @@ public class CardService {
         payment.refund(command.amount());
 
         // 4. 실질적 자금 이동
-        Account merchantAccount = payment.getMerchantAccount();
-        Account userAccount = payment.getCard().getAccount();
+        Account merchantAcc = payment.getMerchantAccount();
+        Account userAcc = payment.getCard().getAccount();
 
+        Account merchantAccount = accountRepository.findActiveByAccountNumberForUpdate(merchantAcc.getAccountNumber())
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
+        Account userAccount = accountRepository.findActiveByAccountNumberForUpdate(userAcc.getAccountNumber())
+                .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
         merchantAccount.withdraw(command.amount());
         userAccount.deposit(command.amount());
 

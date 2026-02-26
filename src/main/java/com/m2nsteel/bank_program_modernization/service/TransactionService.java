@@ -5,7 +5,6 @@ import com.m2nsteel.bank_program_modernization.core.exception.ErrorCode;
 import com.m2nsteel.bank_program_modernization.domain.Account;
 import com.m2nsteel.bank_program_modernization.domain.Transaction;
 import com.m2nsteel.bank_program_modernization.domain.TransactionItem;
-import com.m2nsteel.bank_program_modernization.domain.constant.AccountStatus;
 import com.m2nsteel.bank_program_modernization.repository.AccountRepository;
 import com.m2nsteel.bank_program_modernization.repository.transaction.TransactionRepository;
 import com.m2nsteel.bank_program_modernization.usecase.TransactionUsecase;
@@ -89,10 +88,11 @@ public class TransactionService {
 
         // 2. 검증 및 조회 (출금 계좌 소유권 확인 & 입금 계좌 활성 확인)
         Account fromAccount = findActiveAccountWithOwnership(command.fromAccountNumber(), fromMemberExternalId);
-        Account toAccount = findActiveAccount(command.toAccountNumber());
         verifyAccountPassword(command.accountPassword(), fromAccount.getAccountPassword());
 
         // 3. 양측 계좌 잔액 업데이트
+        Account toAccount = findActiveAccount(command.toAccountNumber());
+
         fromAccount.withdraw(command.amount());
         toAccount.deposit(command.amount());
 
@@ -115,8 +115,7 @@ public class TransactionService {
     }
 
     private Account findActiveAccount(String accountNumber) {
-        return accountRepository.findByAccountNumber(accountNumber)
-                .filter(a -> a.getStatus() == AccountStatus.ACTIVE)
+        return accountRepository.findActiveByAccountNumberForUpdate(accountNumber)
                 .orElseThrow(() -> new BusinessException(ErrorCode.ACCOUNT_NOT_FOUND));
     }
 
